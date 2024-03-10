@@ -1,9 +1,12 @@
 FROM python:3.9-slim
 
 WORKDIR /root
+RUN pwd
+RUN ls
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+RUN ls
 
 COPY . /app
 
