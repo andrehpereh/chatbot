@@ -89,8 +89,8 @@ def send_message():
     user_message = request.json['message']
     # Placeholder chatbot code
     response = predict_custom_trained_model_sample(
-        project="645326684685",
-        endpoint_id="4383332846501101568",
+        project="24796876098",
+        endpoint_id="3872666870003793920",
         location="us-central1",
         user_input= user_message,
     )
