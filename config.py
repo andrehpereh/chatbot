@@ -37,4 +37,15 @@ class Config:
     SEQUENCE_LENGTH = os.getenv("SEQUENCE_LENGTH", 256)
     EPOCHS = os.getenv("EPOCHS", 1)
     BATCH_SIZE = os.getenv("BATCH_SIZE", 1)
-    TRAIN_DATA_DIR = os.getenv("TRAIN_DATA_PATH", "./CHAT")
+    TRAIN_DATA_DIR = os.getenv("TRAIN_DATA_PATH", "input_data/andrehpereh")
+
+    
+import yaml
+
+with open('config.yaml', 'r') as f:
+    config = yaml.safe_load(f)
+
+# Access variables
+print(config['project_id'])  
+print(config['bucket_uri'])
+# ... etc. 

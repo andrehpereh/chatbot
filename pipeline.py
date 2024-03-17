@@ -184,3 +184,124 @@ model_deploy_op = gcc_aip.ModelDeployOp(
     # Link to the created Endpoint.
     endpoint=endpoint_create_op.outputs["endpoint"]
 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@dsl.component(base_image="your-conversion-image:latest") 
+def keras_to_huggingface_op(
+    keras_model_path: dsl.InputPath("Model"), 
+    hf_model_uri: dsl.OutputPath("Model")
+) -> str:
+    keras_model_path = keras_model_path # model_paths['finetuned_weights_path']
+    convert_checkpoints(
+        preset=model_name,
+        weights_file=keras_model_path,
+        size=model_paths['model_size'],
+        output_dir=model_paths['finetuned_vocab_path'],
+        vocab_path=model_paths['huggingface_model_dir'],
+    )
+    hf_model_uri = model_paths['huggingface_model_dir']
+    return hf_model_uri
+
+@component(base_image="your-training-image:latest")  # Replace with your Docker image
+def custom_training_op(
+    # ... Any necessary parameters for your training job ...
+) -> aiplatform.Model:
+    # Import the component
+    from google_cloud_pipeline_components import aiplatform as gcc_aip
+
+    job = gcc_aip.CustomContainerTrainingJobRunOp(
+        # ... Configuration for your Vertex AI container training job ...
+    )
+
+    # Assuming your training job produces a model directly as an artifact
+    return job.outputs["model"] 
+
+@dsl.pipeline(name="bert-sentiment-classification", pipeline_root=PIPELINE_ROOT)
+def pipeline(
+    project: str = PROJECT_ID,
+    location: str = REGION,
+    staging_bucket: str = GCS_BUCKET,
+    display_name: str = DISPLAY_NAME,
+    container_uri: str = IMAGE_URI,
+    model_serving_container_image_uri: str = SERVING_IMAGE_URI,
+    base_output_dir: str = GCS_BASE_OUTPUT_DIR,
+):
+
+    from google_cloud_pipeline_components import aiplatform as gcc_aip
+
+    # Create the training job component
+    model_train_evaluate_op = gcc_aip.CustomContainerTrainingJobRunOp(
+        # Vertex AI Python SDK authentication parameters.     
+        project=project,
+        location=location,
+        staging_bucket=staging_bucket,
+        display_name=display_name,  # Added from pipeline definition
+        container_uri=container_uri,
+        model_serving_container_image_uri=model_serving_container_image_uri,
+
+        # WorkerPool arguments.
+        replica_count=1,
+        machine_type="e2-standard-4",
+
+        # Additional Arguments 
+        base_output_dir=base_output_dir 
+        # ... other arguments specific to your training code
+    )
+
+    training_op = gcc_aip.CustomContainerTrainingJobRunOp(...) 
+
+    conversion_op = keras_to_huggingface_op(
+        keras_model_path=training_op.outputs["model_path"]  
+    )
+
+
+
+    gcc_aip.ModelUploadOp(
+        artifact_uri=conversion_op.outputs["hf_model_uri"],
+        serving_container_image_uri=serving_container_uri,
+    )
+
+
+    # Create a Vertex Endpoint resource in parallel with model training.
+    endpoint_create_op = gcc_aip.EndpointCreateOp(
+        # Vertex AI Python SDK authentication parameters.
+        project=project,
+        location=location,
+        display_name=display_name
+    
+    )   
+    
+    # Deploy your model to the created Endpoint resource for online predictions.
+    model_deploy_op = gcc_aip.ModelDeployOp(
+        # Link to model training component through output model artifact.
+        model=model_train_evaluate_op.outputs["model"],
+        # Link to the created Endpoint.
+        endpoint=endpoint_create_op.outputs["endpoint"],
+        # Define prediction request routing. {"0": 100} indicates 100% of traffic 
+        # to the ID of the current model being deployed.
+        traffic_split={"0": 100},
+        # WorkerPool arguments.        
+        dedicated_resources_machine_type="e2-standard-4",
+        dedicated_resources_min_replica_count=1,
+        dedicated_resources_max_replica_count=2
+    )

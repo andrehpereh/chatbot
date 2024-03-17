@@ -90,7 +90,7 @@ def send_message():
     # Placeholder chatbot code
     response = predict_custom_trained_model_sample(
         project="24796876098",
-        endpoint_id="3872666870003793920",
+        endpoint_id="2459943961893011456",
         location="us-central1",
         user_input= user_message,
     )

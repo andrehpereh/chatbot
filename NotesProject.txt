@@ -1,1 +1,0 @@
-1. Notes: Check the timestampt that is run only once through the whole process

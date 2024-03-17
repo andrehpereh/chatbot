@@ -1,0 +1,17 @@
+# This file needs to be populated.
+project_id: your-actual-project-id # Replace with your project ID
+kaggle_username: your_kaggle_username 
+kaggle_key: your_kaggle_key
+keras_backend: tensorflow  # Assuming you are using tensorflow
+region: us-central1
+bucket_name: your-project-id-chatbot-v1 # Or a custom name
+bucket_uri: gs://your-project-id-chatbot-v1  # Or a custom name
+service_account_name: gemma-vertexai-chatbot 
+# service_account_display_name: Gemma Vertex AI endpoint # (Omitted - See Explanation)
+service_account: gemma-vertexai-chatbot@your-project-id.iam.gserviceaccount.com 
+model_name: gemma_2b_en
+rank_lora: 3  # Using the given default of 3
+sequence_length: 256
+epochs: 1
+batch_size: 1
+train_data_dir: input_data/andrehpereh 

@@ -1,8 +1,10 @@
+import sys
 import keras
 import keras_nlp
 import os
+import json
 
-def finetune_gemma(data: list[str], model_paths:dict, model_name: str, rank_lora: int=6, sequence_length: int=256, epochs: int=2, batch_size: int=1) :
+def finetune_gemma(data: list[str], model_paths:dict, model_name: str='gemma_2b_en', rank_lora: int=6, sequence_length: int=256, epochs: int=2, batch_size: int=1) :
     # keras_nlp.models.GemmaCausalLM.from_preset(model)
     # Reduce the input sequence length to limit memory usage
     model = keras_nlp.models.GemmaCausalLM.from_preset(model_name)
@@ -31,14 +33,19 @@ def finetune_gemma(data: list[str], model_paths:dict, model_name: str, rank_lora
     os.makedirs(model_paths['finetuned_model_dir'], exist_ok=True)
     model.save_weights(model_paths['finetuned_weights_path'])
     model.preprocessor.tokenizer.save_assets(model_paths['finetuned_model_dir'])
+    print("Saving model in ", model_paths['finetuned_model_dir'])
     finetuned_weights_path = model_paths['finetuned_weights_path']
 
     return finetuned_weights_path
 
 if __name__ == '__main__':
-    model_paths = {
-        'finetuned_model_dir': './gemma_2b_en',
-        'finetuned_weights_path': './gemma_2b_en/model.weights.h5'
-    }
-    data = ['Sender:\nFooooddd\n\nAndres Perez:\nComing :)', "Sender:\nCan I maybe borrow your iron?\n\nAndres Perez:\nIt's not my iron But yeah haha Or is it? 🤔🧐"]
-    finetune_gemma(data=data, model_paths=model_paths, model_name = 'gemma_2b_en')
+    print(sys.argv[1], type(sys.argv[1]))
+    print(sys.argv[2], type(sys.argv[2]))
+    if len(sys.argv) >= 3:  # Check if we have enough arguments
+        param1 = json.loads(sys.argv[1])
+        print("This is type param1", type(param1))
+        param2 = json.loads(sys.argv[2])
+        print("This is type param1", type(param2))
+        finetune_gemma(data=param1, model_paths=param2)
+    else:
+        print("Usage: python your_script.py param1 param2")

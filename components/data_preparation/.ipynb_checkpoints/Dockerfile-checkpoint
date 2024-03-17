@@ -1,11 +1,11 @@
 FROM python:3.9-slim
 
-WORKDIR /root
-RUN ls
-RUN ls
-COPY data_ingestion.py .
-RUN ls
-WORKDIR /root
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -U -r requirements.txt
+COPY data_ingestion.py /app
+WORKDIR /app
+RUN pip list
 RUN ls
 
-CMD ["python", "-m", "data_ingestion"]  
+ENTRYPOINT ["python"]  

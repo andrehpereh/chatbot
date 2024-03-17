@@ -1,1 +1,1 @@
-#tensorflow==2.15.0 future libraries migh be needed in near development.
+google-cloud-storage==2.14.0

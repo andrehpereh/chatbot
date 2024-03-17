@@ -37,4 +37,4 @@ class Config:
     SEQUENCE_LENGTH = os.getenv("SEQUENCE_LENGTH", 256)
     EPOCHS = os.getenv("EPOCHS", 1)
     BATCH_SIZE = os.getenv("BATCH_SIZE", 1)
-    TRAIN_DATA_PATH = os.getenv("TRAIN_DATA_PATH", "./CHAT")
+    TRAIN_DATA_DIR = os.getenv("TRAIN_DATA_PATH", "input_data/andrehpereh")

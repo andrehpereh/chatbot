@@ -1,11 +1,13 @@
 FROM us-docker.pkg.dev/deeplearning-platform-release/gcr.io/base-cu121.py310
 
-WORKDIR /root
-RUN ls
+WORKDIR /trainer
 COPY requirements.txt .
 RUN pip install -U -r requirements.txt
-RUN ls
-COPY trainer /trainer
-RUN ls
+COPY . /trainer
 WORKDIR /trainer
-RUN ls
+ARG KAGGLE_USERNAME
+ENV KAGGLE_USERNAME=$KAGGLE_USERNAME
+ARG KAGGLE_KEY
+ENV KAGGLE_KEY=$KAGGLE_KEY
+
+ENTRYPOINT ["python"]  
