@@ -1,0 +1,213 @@
+{
+  "components": {
+    "comp-fine-tunning": {
+      "executorLabel": "exec-fine-tunning",
+      "inputDefinitions": {
+        "artifacts": {
+          "dataset_path": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "model_paths": {
+            "parameterType": "STRUCT"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-process-whatsapp-chat-op": {
+      "executorLabel": "exec-process-whatsapp-chat-op",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "directory": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "dataset_path": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-fine-tunning": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "fine_tunning"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.5.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef fine_tunning(\n  dataset_path: InputPath('Dataset'),\n  model_paths: dict,\n) -> str:\n    #import test_container\n    import trainer\n    import json\n    with open(dataset_path, 'r') as f:\n        dataset = json.load(f)\n    #finetuned_weights_path = test_container.add_test(dataset, model_paths)\n    finetuned_weights_path = trainer.finetune_gemma(dataset, model_paths)\n    print(\"Si funciono este pedo\", finetuned_weights_path)\n    return finetuned_weights_path\n\n"
+          ],
+          "image": "gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest",
+          "resources": {
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_L4"
+            },
+            "cpuLimit": 0.001,
+            "memoryLimit": 100.0
+          }
+        }
+      },
+      "exec-process-whatsapp-chat-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "process_whatsapp_chat_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.5.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef process_whatsapp_chat_op(\n  bucket_name: str,\n  directory: str,\n  dataset_path: OutputPath('Dataset')\n):\n    import data_ingestion\n    import json\n    formatted_messages = data_ingestion.process_whatsapp_chat(bucket_name, directory)\n    with open(dataset_path, 'w') as f:\n        json.dump(formatted_messages, f)\n\n"
+          ],
+          "image": "gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:latest"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "pythagorean"
+  },
+  "root": {
+    "dag": {
+      "outputs": {
+        "parameters": {
+          "Output": {
+            "valueFromParameter": {
+              "outputParameterKey": "Output",
+              "producerSubtask": "fine-tunning"
+            }
+          }
+        }
+      },
+      "tasks": {
+        "fine-tunning": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-fine-tunning"
+          },
+          "dependentTasks": [
+            "process-whatsapp-chat-op"
+          ],
+          "inputs": {
+            "artifacts": {
+              "dataset_path": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "dataset_path",
+                  "producerTask": "process-whatsapp-chat-op"
+                }
+              }
+            },
+            "parameters": {
+              "model_paths": {
+                "componentInputParameter": "model_paths"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "fine-tunning"
+          }
+        },
+        "process-whatsapp-chat-op": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-process-whatsapp-chat-op"
+          },
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "directory": {
+                "componentInputParameter": "directory"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "process-whatsapp-chat-op"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "bucket_name": {
+          "defaultValue": "able-analyst-416817-chatbot-v1",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "directory": {
+          "defaultValue": "input_data/andrehpereh",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "model_paths": {
+          "defaultValue": {
+            "accelerator_count": 1.0,
+            "accelerator_type": "NVIDIA_L4",
+            "deployed_model_blob": "gemma_2b_en/20240318153717",
+            "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240318153717",
+            "finetuned_model_dir": "./gemma_2b_en",
+            "finetuned_vocab_path": "./gemma_2b_en/vocabulary.spm",
+            "finetuned_weights_path": "./gemma_2b_en/model.weights.h5",
+            "huggingface_model_dir": "./gemma_2b_en_huggingface",
+            "machine_type": "g2-standard-8",
+            "model_name_vllm": "gemma_2b_en-vllm",
+            "model_size": "2b"
+          },
+          "isOptional": true,
+          "parameterType": "STRUCT"
+        }
+      }
+    },
+    "outputDefinitions": {
+      "parameters": {
+        "Output": {
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.5.0"
+}

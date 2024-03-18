@@ -1,3 +1,4 @@
+import argparse
 import sys
 import keras
 import keras_nlp
@@ -7,7 +8,11 @@ import json
 def finetune_gemma(data: list[str], model_paths:dict, model_name: str='gemma_2b_en', rank_lora: int=6, sequence_length: int=256, epochs: int=2, batch_size: int=1) :
     # keras_nlp.models.GemmaCausalLM.from_preset(model)
     # Reduce the input sequence length to limit memory usage
+    print("Hasta aqui jala")
+    print(os.getenv("KAGGLE_USERNAME"))
+    print(os.getenv("KAGGLE_KEY"))
     model = keras_nlp.models.GemmaCausalLM.from_preset(model_name)
+    print("Aqui ya no")
     model.summary()
     model.backbone.enable_lora(rank=rank_lora)
     model.summary()
@@ -39,13 +44,42 @@ def finetune_gemma(data: list[str], model_paths:dict, model_name: str='gemma_2b_
     return finetuned_weights_path
 
 if __name__ == '__main__':
-    print(sys.argv[1], type(sys.argv[1]))
-    print(sys.argv[2], type(sys.argv[2]))
-    if len(sys.argv) >= 3:  # Check if we have enough arguments
-        param1 = json.loads(sys.argv[1])
-        print("This is type param1", type(param1))
-        param2 = json.loads(sys.argv[2])
-        print("This is type param1", type(param2))
-        finetune_gemma(data=param1, model_paths=param2)
-    else:
-        print("Usage: python your_script.py param1 param2")
+    
+    parser = argparse.ArgumentParser(description='Training script arguments')  # Optional description
+
+    # Data argument
+    parser.add_argument('--data', dest='data', nargs='+', type=str, 
+                        help='List of input data files (space-separated)')
+    # Model paths (assuming you'll handle parsing the dictionary later)
+    parser.add_argument('--model-paths', dest='model_paths', type=str, 
+                        help='String representation of model paths dictionary') 
+    # Model name 
+    parser.add_argument('--model-name', dest='model_name', 
+                        default='gemma_2b_en', type=str, help='Name of the model')
+    # Rank LoRA
+    parser.add_argument('--rank-lora', dest='rank_lora', 
+                        default=6, type=int, help='LoRA rank') 
+    # Sequence length
+    parser.add_argument('--sequence-length', dest='sequence_length', 
+                        default=256, type=int, help='Input sequence length') 
+    # Epochs
+    parser.add_argument('--epochs', dest='epochs', 
+                        default=2, type=int, help='Number of training epochs')
+    # Batch size 
+    parser.add_argument('--batch-size', dest='batch_size', 
+                       default=1, type=int, help='Batch size')
+    args = parser.parse_args()
+
+    hparams = args.__dict__
+    print(type(args.data), args.data)
+    print(type(args.model_paths), json.loads(args.model_paths))
+
+    finetune_gemma(
+        data=args.data, 
+        model_paths=json.loads(args.model_paths),
+        model_name=args.model_name,
+        rank_lora=args.rank_lora,
+        sequence_length=args.sequence_length,
+        epochs=args.epochs,
+        batch_size=args.batch_size
+    ) 

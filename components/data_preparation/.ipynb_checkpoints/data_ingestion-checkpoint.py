@@ -1,12 +1,16 @@
 import re
+import argparse
+from typing import List
 import sys
 from google.cloud import storage
 from io import BytesIO
 
-def process_whatsapp_chat(bucket_name, directory):
+def process_whatsapp_chat(bucket_name: str, directory: str) -> List[str]:
+    print("Bucket Name", bucket_name)
+    print("Directory", directory)
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket_name)
-    print(bucket)
+    print(bucket_name)
     print(directory)
 
     current_sender = None
@@ -62,13 +66,17 @@ def process_whatsapp_chat(bucket_name, directory):
     res = []
     for i in range(0, len(qa_pairs_all), 2):
         res.append((qa_pairs_all[i], qa_pairs_all[i+1]))
-    
+
     formatted_messages = [f"{message_pair[0]}\n\n{message_pair[1]}" for message_pair in res]
+
     return formatted_messages
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 2:  # Check if we have enough arguments
-        data = process_whatsapp_chat(bucket_name=sys.argv[1], directory=sys.argv[2])
-        print(data[123:125])
-    else:
-        print("Usage: python your_script.py param1 param2")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bucket-name', dest='bucket-name',
+                        default='able-analyst-416817-chatbot-v1', type=str, help='GCS URI for saving model artifacts.')
+    parser.add_argument('--directory', dest='directory', 
+                        default='input_data/andrehpereh', type=str, help='TF-Hub URL.')
+    args = parser.parse_args()
+    hparams = args.__dict__
+    process_whatsapp_chat(hparams['bucket-name'], hparams['directory'])
