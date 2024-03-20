@@ -18,7 +18,7 @@ def convert_checkpoints(
     # Download the conversion script
     if not os.path.exists(conversion_script):
         try:
-            subprocess.run(["wget", "-nv", "-nc", f"{https://raw.githubusercontent.com/keras-team/keras-nlp/master/tools/gemma}/{conversion_script}"], check=True)
+            subprocess.run(["wget", "-nv", "-nc", f"{convertion_https_dir}/{conversion_script}"], check=True)
         except subprocess.SubprocessError as e:
             print(f"Download failed: {e}")
             exit(1)

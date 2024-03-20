@@ -39,11 +39,15 @@ def get_model_paths_and_config(model_name):
     # Construct paths
     model_size = model_name.split("_")[-2]
     assert model_size in ("2b", "7b")
-
-    finetuned_model_dir = f"./{model_name}"
+    
+    # When runnning local "./"
+    #finetuned_model_dir = f"."
+    finetuned_model_dir = f"{Config.BUCKET_URI}/{model_name}_raw/{model_name}"
+    
+    print(finetuned_model_dir)
     finetuned_weights_path = f"{finetuned_model_dir}/model.weights.h5"
     finetuned_vocab_path = f"{finetuned_model_dir}/vocabulary.spm"
-    huggingface_model_dir = f"./{model_name}_huggingface"
+    huggingface_model_dir = f"{finetuned_model_dir}_huggingface"
     timestamp = Config.TIMESTAMP
     deployed_model_blob = f"{model_name}/{timestamp}" 
     deployed_model_uri = f"{Config.BUCKET_URI}/{deployed_model_blob}"  # Assuming BUCKET_URI is globally defined
