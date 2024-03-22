@@ -1,323 +1,188 @@
-# import keras
-# import keras_nlp
-# import os
-# from util import get_model_paths_and_config, process_whatsapp_chat, upload2bs
-# from config import Config
-# from trainer import finetune_gemma
-# from conversion_function import convert_checkpoints
-# from numba import cuda
-# from google_cloud_pipeline_components import aiplatform as gcc_aip
-# import kfp.dsl as dsl
-
-# model_paths_and_config = get_model_paths_and_config(Config.MODEL_NAME)
-
-# data = process_whatsapp_chat(Config.TRAIN_DATA_DIR)
-
-# finetuned_weights_path = finetune_gemma(data=data[:50], model_paths=model_paths_and_config, model_name=Config.MODEL_NAME, rank_lora=Config.SEQUENCE_LENGTH, sequence_length=Config.SEQUENCE_LENGTH, epochs=Config.EPOCHS, batch_size=Config.BATCH_SIZE)
-
-# device = cuda.get_current_device()
-# cuda.select_device(device.id)
-# cuda.close()
-
-# output_dir = convert_checkpoints(
-#     weights_file=finetuned_weights_path,
-#     size=model_paths_and_config['model_size'],
-#     output_dir=model_paths_and_config['huggingface_model_dir'],
-#     vocab_path=model_paths_and_config['finetuned_vocab_path'],
-# )
-
-# destination_path = upload2bs(
-#     local_directory = output_dir, bucket_name = Config.BUCKET_NAME,
-#     destination_subfolder = model_paths_and_config['deployed_model_blob']
-# )
+res = !gcloud config get core/project
+PROJECT_ID = res[0]
 
 
-import kfp.v2.dsl as dsl
-from typing import List
-from components.data_preparationdata_ingestion import process_whatsapp_chat
+from kfp import dsl
+import kfp as kfp
+from kfp.dsl import OutputPath, Artifact, InputPath
+from kfp import compiler
+from config import Config
+from util import get_model_paths_and_config
+from google.cloud import aiplatform as vertexai
 
 @dsl.component(
-    base_image='gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:latest' # Choose a suitable Python base image
+  base_image ='gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:latest'
 )
-def list_files_component(
-    bucket_name: dsl.Input[str],
-    directory: dsl.Input[str],
-) -> dsl.Output[List[str]]:
-    return list_text_files(bucket_name, directory) 
+def process_whatsapp_chat_op(
+  bucket_name: str,
+  directory: str,
+  dataset_path: OutputPath('Dataset')
+):
+    import data_ingestion
+    import json
+    formatted_messages = data_ingestion.process_whatsapp_chat(bucket_name, directory)
+    with open(dataset_path, 'w') as f:
+        json.dump(formatted_messages, f)
 
 
-
-
-
-# @dsl.component(
-#     base_image="python:3.9-slim"  # Choose appropriate Python image
-# )
-# def process_whatsapp_chat_op(chat_path: str) -> NamedTuple("Outputs", [("data_list", List[str]), ("data_dict", Dict[str, int])]):
-#     model_paths_and_config = get_model_paths_and_config(Config.MODEL_NAME)
-#     data = process_whatsapp_chat(Config.TRAIN_DATA_DIR)
-#     return data, model_paths_and_config
-
-
-# @dsl.component(
-#     base_image="tensorflow/tensorflow:latest-gpu"  # Or other GPU-enabled image 
-# )
-# def finetune_gemma_op(
-#     data: str,
-#     model_paths: dict,  
-#     model_name: str,
-#     rank_lora: int,
-#     sequence_length: int,
-#     epochs: int,
-#     batch_size: int
-# ) -> str:
-#     job = gcc_aip.CustomContainerTrainingJobRunOp(
-#         ... # Configure your training job parameters
-#     )
-#     finetuned_weights_path = finetune_gemma(
-#         data=data[:50], model_paths=model_paths_and_config, model_name=Config.MODEL_NAME,
-#         rank_lora=Config.SEQUENCE_LENGTH,sequence_length=Config.SEQUENCE_LENGTH, epochs=Config.EPOCHS, batch_size=Config.BATCH_SIZE
-#     )
-#     return finetuned_weights_path
-#     # ... return path to finetuned weights
+@dsl.component(
+  base_image = 'gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest'
+)
+def fine_tunning(
+  dataset_path: InputPath('Dataset'),
+  model_paths: dict,
+  #finetuned_weights_dir: OutputPath('Model'),
+) -> str:
+    # import test_container
+    import trainer
+    import json
+    import util
+    import os
+    with open(dataset_path, 'r') as f:
+        dataset = json.load(f)
+    os.makedirs(model_paths['finetuned_model_dir'], exist_ok=True)
+    finetuned_weights_path = os.path.join(model_paths['finetuned_model_dir'], 'model.weights.h5') 
     
-# @dsl.component(
-#     base_image="python:3.8"  
-# )
-# def convert_checkpoints_op(
-#     weights_file: str,
-#     size: str, 
-#     output_dir: str, 
-#     vocab_path: str    
-# ) -> str:
-#     output_dir = convert_checkpoints(
-#         weights_file=finetuned_weights_path,
-#         size=model_paths_and_config['model_size'],
-#         output_dir=model_paths_and_config['huggingface_model_dir'],
-#         vocab_path=model_paths_and_config['finetuned_vocab_path'],
-#     )
-#     return output_dir
-
-# import kfp.dsl as dsl
-
-# @dsl.component(
-#     base_image="python:3.8"  # You might need additional cloud storage libraries
-# )
-# def upload2bs_op(
-#     local_directory: str,
-#     bucket_name: str, 
-#     destination_subfolder: str
-# ) -> str:
-#     destination_path = upload2bs(
-#         local_directory = output_dir, bucket_name = Config.BUCKET_NAME,
-#         destination_subfolder = model_paths_and_config['deployed_model_blob']
-#     )
-#     return destination_path
-
-
-# import kfp.dsl as dsl
-
-# @dsl.pipeline(
-#     name="whatsapp-chat-finetuning",
-#     description="Pipeline to process and fine-tune a model on WhatsApp chat data"
-# )
-# def whatsapp_chat_pipeline(
-#     project: str = PROJECT_ID,
-#     location: str = REGION,
-#     staging_bucket: str = GCS_BUCKET,
-#     display_name: str = DISPLAY_NAME,
-#     container_uri: str = IMAGE_URI,
-#     model_serving_container_image_uri: str = SERVING_IMAGE_URI,
-#     base_output_dir: str = GCS_BASE_OUTPUT_DIR,
-# ):
-#     chat_data = process_whatsapp_chat_op("./CHAT")
-#     model_paths_config = get_model_paths_and_config(Config.MODEL_NAME)
-
-#     finetune_task = finetune_gemma_op(
-#         data=chat_data.output,
-#         model_paths=model_paths_config,
-#         model_name=Config.MODEL_NAME,
-#         rank_lora=Config.SEQUENCE_LENGTH,
-#         sequence_length=Config.SEQUENCE_LENGTH,
-#         epochs=Config.EPOCHS,
-#         batch_size=Config.BATCH_SIZE
-#     )
-
-#     conversion_task = convert_checkpoints_op(
-#         weights_file=finetune_task.output,
-#         size=model_paths_config['model_size'], 
-#         output_dir=model_paths_config['huggingface_model_dir'], 
-#         vocab_path=model_paths_config['finetuned_vocab_path']
-#     )
-
-#     upload_task = upload2bs_op(
-#         local_directory=conversion_task.output, 
-#         bucket_name=Config.BUCKET_NAME, 
-#         destination_subfolder=model_paths_config['deployed_model_blob']
-#     )
-
-#     model_upload_task = ModelUploadOp(destination_path=upload_task.output)
-#     endpoint_create_task = gcc_aip.EndpointCreateOp()
-#     model_deploy_task = gcc_aip.ModelDeployOp(
-#         model=model_upload_task.outputs["model"],
-#         endpoint=endpoint_create_task.outputs["endpoint"]
-#     ) 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ModelUploadOp(destination_path)
-
-# endpoint_create_op = gcc_aip.EndpointCreateOp()
-
-# model_deploy_op = gcc_aip.ModelDeployOp(
-#     # Link to model training component through output model artifact.
-#     model=model_train_evaluate_op.outputs["model"],
-#     # Link to the created Endpoint.
-#     endpoint=endpoint_create_op.outputs["endpoint"]
-# )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# @dsl.component(base_image="your-conversion-image:latest") 
-# def keras_to_huggingface_op(
-#     keras_model_path: dsl.InputPath("Model"), 
-#     hf_model_uri: dsl.OutputPath("Model")
-# ) -> str:
-#     keras_model_path = keras_model_path # model_paths['finetuned_weights_path']
-#     convert_checkpoints(
-#         preset=model_name,
-#         weights_file=keras_model_path,
-#         size=model_paths['model_size'],
-#         output_dir=model_paths['finetuned_vocab_path'],
-#         vocab_path=model_paths['huggingface_model_dir'],
-#     )
-#     hf_model_uri = model_paths['huggingface_model_dir']
-#     return hf_model_uri
-
-# @component(base_image="your-training-image:latest")  # Replace with your Docker image
-# def custom_training_op(
-#     # ... Any necessary parameters for your training job ...
-# ) -> aiplatform.Model:
-#     # Import the component
-#     from google_cloud_pipeline_components import aiplatform as gcc_aip
-
-#     job = gcc_aip.CustomContainerTrainingJobRunOp(
-#         # ... Configuration for your Vertex AI container training job ...
-#     )
-
-#     # Assuming your training job produces a model directly as an artifact
-#     return job.outputs["model"] 
-
-# @dsl.pipeline(name="bert-sentiment-classification", pipeline_root=PIPELINE_ROOT)
-# def pipeline(
-#     project: str = PROJECT_ID,
-#     location: str = REGION,
-#     staging_bucket: str = GCS_BUCKET,
-#     display_name: str = DISPLAY_NAME,
-#     container_uri: str = IMAGE_URI,
-#     model_serving_container_image_uri: str = SERVING_IMAGE_URI,
-#     base_output_dir: str = GCS_BASE_OUTPUT_DIR,
-# ):
-
-#     from google_cloud_pipeline_components import aiplatform as gcc_aip
-
-#     # Create the training job component
-#     model_train_evaluate_op = gcc_aip.CustomContainerTrainingJobRunOp(
-#         # Vertex AI Python SDK authentication parameters.     
-#         project=project,
-#         location=location,
-#         staging_bucket=staging_bucket,
-#         display_name=display_name,  # Added from pipeline definition
-#         container_uri=container_uri,
-#         model_serving_container_image_uri=model_serving_container_image_uri,
-
-#         # WorkerPool arguments.
-#         replica_count=1,
-#         machine_type="e2-standard-4",
-
-#         # Additional Arguments 
-#         base_output_dir=base_output_dir 
-#         # ... other arguments specific to your training code
-#     )
-
-#     training_op = gcc_aip.CustomContainerTrainingJobRunOp(...) 
-
-#     conversion_op = keras_to_huggingface_op(
-#         keras_model_path=training_op.outputs["model_path"]  
-#     )
-
-
-
-#     gcc_aip.ModelUploadOp(
-#         artifact_uri=conversion_op.outputs["hf_model_uri"],
-#         serving_container_image_uri=serving_container_uri,
-#     )
-
-
-#     # Create a Vertex Endpoint resource in parallel with model training.
-#     endpoint_create_op = gcc_aip.EndpointCreateOp(
-#         # Vertex AI Python SDK authentication parameters.
-#         project=project,
-#         location=location,
-#         display_name=display_name
+    model = trainer.finetune_gemma(dataset, model_paths, False)
+    print("Its gonna save it here", finetuned_weights_path)
+    #model.save_weights(finetuned_weights_path)
+    #model.preprocessor.tokenizer.save_assets(model_paths['finetuned_model_dir'])
+    bucket_name = 'able-analyst-416817-chatbot-v1' # move to parameter.
+    util.upload2bs(
+        local_directory = model_paths['finetuned_model_dir'], bucket_name = bucket_name,
+        destination_subfolder = model_paths['fine_tuned_keras_blob']
+    )
+    model_gcs = "gs://{}/{}".format(bucket_name, model_paths['fine_tuned_keras_blob'])  
+    print("This is the storage bucket", model_gcs)
+    return model_gcs
     
-#     )   
+
+@dsl.component(
+  base_image = 'gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest'
+)
+def convert_checkpoints_op(
+  keras_gcs_model: str,
+  model_paths: dict
+) -> str:
+    import conversion_function
+    import os
+    import util
+    bucket_name, blob_name = os.path.dirname(keras_gcs_model).lstrip("gs://").split("/", 1) 
+    print("This is the keras passed", keras_gcs_model)
+    util.download_all_from_blob(bucket_name, model_paths['fine_tuned_keras_blob'], local_destination=model_paths['finetuned_model_dir'])
+    if os.path.exists("./model.weights.h5"):
+        print("File exists!")
+    else:
+        print("File does not exist.")
+    converted_fined_tuned_path = conversion_function.convert_checkpoints(
+        weights_file=model_paths['finetuned_weights_path'],
+        size=model_paths['model_size'],
+        output_dir=model_paths['huggingface_model_dir'],
+        vocab_path=model_paths['finetuned_vocab_path']
+    )
+    util.upload2bs(
+        local_directory = converted_fined_tuned_path, bucket_name = bucket_name,
+        destination_subfolder = model_paths['deployed_model_blob']
+    )
+    return model_paths['deployed_model_uri']
+
+
+
+@kfp.dsl.pipeline(name="Model deployment.")
+def model_deployment_pipeline(
+    project: str = PROJECT_ID, bucket_name: str = "able-analyst-416817-chatbot-v1", directory: str = "input_data/andrehpereh", 
+    model_paths: dict=get_model_paths_and_config(Config.MODEL_NAME)
+):
+    WORKING_DIR = 'gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322091040/'
+    VLLM_DOCKER_URI = "us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01"
+    print(Config.MODEL_NAME)
+    model_paths_and_config = get_model_paths_and_config(Config.MODEL_NAME)
+
+    from google_cloud_pipeline_components.types import artifact_types
+    from google_cloud_pipeline_components.v1.endpoint import (EndpointCreateOp,
+                                                              ModelDeployOp)
+    from google_cloud_pipeline_components.v1.model import ModelUploadOp
+    from kfp.dsl import importer_node
+
+
+    port = 7080
+    accelerator_count=1
+    max_model_len=256
+    dtype="bfloat16"
+    vllm_args = [
+        "--host=0.0.0.0",
+        f"--port={port}",
+        f"--tensor-parallel-size={accelerator_count}",
+        "--swap-space=16",
+        "--gpu-memory-utilization=0.95",
+        f"--max-model-len={max_model_len}",
+        f"--dtype={dtype}",
+        "--disable-log-stats",
+    ]
+
+    metadata = {
+      "imageUri": VLLM_DOCKER_URI,
+      "command": ["python", "-m", "vllm.entrypoints.api_server"],
+      "args": vllm_args,
+      "ports": [
+        {
+          "containerPort": port
+        }
+      ],
+      "predictRoute": "/generate",
+      "healthRoute": "/ping"
+    }
+
+    # from google_cloud_pipeline_components import ModelUploadOp
+    model_paths = get_model_paths_and_config(Config.MODEL_NAME)
+    whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
+
+    trainer = fine_tunning(dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths)
+    trainer.set_memory_limit("50G").set_cpu_limit('12.0m').set_accelerator_limit(1).add_node_selector_constraint("NVIDIA_L4")
+
+    print("This is the dictionary", model_paths)
+    converted = convert_checkpoints_op(
+        keras_gcs_model=trainer.output, model_paths=model_paths
+    ).set_memory_limit("50G").set_cpu_limit('8.0m').set_accelerator_limit(1).add_node_selector_constraint("NVIDIA_L4")
+
+    import_unmanaged_model_task = importer_node.importer(
+        artifact_uri=converted.output,
+        artifact_class=artifact_types.UnmanagedContainerModel,
+        metadata={
+            "containerSpec": metadata,
+        },
+    )
+
+    model_upload_op = ModelUploadOp(
+        project=project,
+        display_name="Mini Andres, first version automated",
+        unmanaged_container_model=import_unmanaged_model_task.outputs["artifact"],
+    )
+    model_upload_op.after(import_unmanaged_model_task)
+
+    endpoint_create_op = EndpointCreateOp(
+        project=project,
+        display_name="pipelines-created-endpoint",
+    )
+
+    ModelDeployOp(
+        endpoint=endpoint_create_op.outputs["endpoint"],
+        model=model_upload_op.outputs["model"],
+        deployed_model_display_name=model_paths_and_config['model_name_vllm'],
+        dedicated_resources_machine_type=model_paths_and_config['machine_type'],
+        dedicated_resources_min_replica_count=1,
+        dedicated_resources_max_replica_count=1,
+        dedicated_resources_accelerator_type=model_paths_and_config['accelerator_type'],
+        dedicated_resources_accelerator_count=model_paths_and_config['accelerator_count']
+    )
+
     
-#     # Deploy your model to the created Endpoint resource for online predictions.
-#     model_deploy_op = gcc_aip.ModelDeployOp(
-#         # Link to model training component through output model artifact.
-#         model=model_train_evaluate_op.outputs["model"],
-#         # Link to the created Endpoint.
-#         endpoint=endpoint_create_op.outputs["endpoint"],
-#         # Define prediction request routing. {"0": 100} indicates 100% of traffic 
-#         # to the ID of the current model being deployed.
-#         traffic_split={"0": 100},
-#         # WorkerPool arguments.        
-#         dedicated_resources_machine_type="e2-standard-4",
-#         dedicated_resources_min_replica_count=1,
-#         dedicated_resources_max_replica_count=2
-#     )
+compiler.Compiler().compile(
+    pipeline_func=model_deployment_pipeline, package_path="model_deployment_pipeline.json"
+)
+vertexai.init(project=PROJECT_ID, location="us-central1")
+vertex_pipelines_job = vertexai.pipeline_jobs.PipelineJob(
+    display_name="test-model_deployment_pipeline",
+    template_path="model_deployment_pipeline.json"
+)
+vertex_pipelines_job.run()

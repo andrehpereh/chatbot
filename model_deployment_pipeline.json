@@ -1,0 +1,850 @@
+{
+  "components": {
+    "comp-convert-checkpoints-op": {
+      "executorLabel": "exec-convert-checkpoints-op",
+      "inputDefinitions": {
+        "parameters": {
+          "keras_gcs_model": {
+            "parameterType": "STRING"
+          },
+          "model_paths": {
+            "parameterType": "STRUCT"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-endpoint-create": {
+      "executorLabel": "exec-endpoint-create",
+      "inputDefinitions": {
+        "parameters": {
+          "description": {
+            "defaultValue": "",
+            "description": "The description of the Endpoint.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "display_name": {
+            "description": "The user-defined name of the Endpoint. The name can be up to 128 characters long and can be consist of any UTF-8 characters.",
+            "parameterType": "STRING"
+          },
+          "encryption_spec_key_name": {
+            "defaultValue": "",
+            "description": "Customer-managed encryption key spec for an Endpoint. If set, this Endpoint and all of this Endoint's sub-resources will be secured by this key. Has the form: `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`. The key needs to be in the same region as where the compute resource is created.  If set, this Endpoint and all sub-resources of this Endpoint will be secured by this key.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "labels": {
+            "defaultValue": {},
+            "description": "The labels with user-defined metadata to organize your Endpoints.  Label keys and values can be no longer than 64 characters (Unicode codepoints), can only contain lowercase letters, numeric characters, underscores and dashes. International characters are allowed.  See https://goo.gl/xmQnxf for more information and examples of labels.",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "location": {
+            "defaultValue": "us-central1",
+            "description": "Location to create the Endpoint. If not set, default to us-central1.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "network": {
+            "defaultValue": "",
+            "description": "The full name of the Google Compute Engine network to which the Endpoint should be peered. Private services access must already be configured for the network. If left unspecified, the Endpoint is not peered with any network. [Format](https://cloud.google.com/compute/docs/reference/rest/v1/networks/insert): `projects/{project}/global/networks/{network}`. Where `{project}` is a project number, as in `'12345'`, and `{network}` is network name.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project": {
+            "defaultValue": "{{$.pipeline_google_cloud_project_id}}",
+            "description": "Project to create the Endpoint. Defaults to the project in which the PipelineJob is run.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "endpoint": {
+            "artifactType": {
+              "schemaTitle": "google.VertexEndpoint",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "Artifact tracking the created Endpoint."
+          }
+        },
+        "parameters": {
+          "gcp_resources": {
+            "description": "Serialized JSON of `gcp_resources` [proto](https://github.com/kubeflow/pipelines/tree/master/components/google-cloud/google_cloud_pipeline_components/proto) which tracks the create Endpoint's long-running operation.",
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-fine-tunning": {
+      "executorLabel": "exec-fine-tunning",
+      "inputDefinitions": {
+        "artifacts": {
+          "dataset_path": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        },
+        "parameters": {
+          "model_paths": {
+            "parameterType": "STRUCT"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-importer": {
+      "executorLabel": "exec-importer",
+      "inputDefinitions": {
+        "parameters": {
+          "metadata": {
+            "parameterType": "STRING"
+          },
+          "uri": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "artifact": {
+            "artifactType": {
+              "schemaTitle": "google.UnmanagedContainerModel",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-model-deploy": {
+      "executorLabel": "exec-model-deploy",
+      "inputDefinitions": {
+        "artifacts": {
+          "endpoint": {
+            "artifactType": {
+              "schemaTitle": "google.VertexEndpoint",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "The Endpoint to be deployed to.",
+            "isOptional": true
+          },
+          "model": {
+            "artifactType": {
+              "schemaTitle": "google.VertexModel",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "The model to be deployed."
+          }
+        },
+        "parameters": {
+          "automatic_resources_max_replica_count": {
+            "defaultValue": 0.0,
+            "description": "The maximum number of replicas this DeployedModel may be deployed on when the traffic against it increases. If the requested value is too large, the deployment will error, but if deployment succeeds then the ability to scale the model to that many replicas is guaranteed (barring service outages). If traffic against the DeployedModel increases beyond what its replicas at maximum may handle, a portion of the traffic will be dropped. If this value is not provided, a no upper bound for scaling under heavy traffic will be assume, though Vertex AI may be unable to scale beyond certain replica number.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "automatic_resources_min_replica_count": {
+            "defaultValue": 0.0,
+            "description": "The minimum number of replicas this DeployedModel will be always deployed on. If traffic against it increases, it may dynamically be deployed onto more replicas up to `automatic_resources_max_replica_count`, and as traffic decreases, some of these extra replicas may be freed. If the requested value is too large, the deployment will error.  This field is required if `dedicated_resources_machine_type` is not specified.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "dedicated_resources_accelerator_count": {
+            "defaultValue": 0.0,
+            "description": "The number of accelerators to attach to a worker replica.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "dedicated_resources_accelerator_type": {
+            "defaultValue": "",
+            "description": "Hardware accelerator type. Must also set accelerator_count if used. See [available options](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/MachineSpec#AcceleratorType).  This field is required if `dedicated_resources_machine_type` is specified.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "dedicated_resources_machine_type": {
+            "defaultValue": "",
+            "description": "The specification of a single machine used by the prediction.  This field is required if `automatic_resources_min_replica_count` is not specified.  See [more information](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.endpoints#dedicatedresources).",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "dedicated_resources_max_replica_count": {
+            "defaultValue": 0.0,
+            "description": "The maximum number of replicas this deployed model may the larger value of min_replica_count or 1 will be used. If value provided is smaller than min_replica_count, it will automatically be increased to be min_replica_count. The maximum number of replicas this deployed model may be deployed on when the traffic against it increases. If requested value is too large, the deployment will error, but if deployment succeeds then the ability to scale the model to that many replicas is guaranteed (barring service outages). If traffic against the deployed model increases beyond what its replicas at maximum may handle, a portion of the traffic will be dropped. If this value is not provided, will use `dedicated_resources_min_replica_count` as the default value.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "dedicated_resources_min_replica_count": {
+            "defaultValue": 0.0,
+            "description": "The minimum number of machine replicas this DeployedModel will be always deployed on. This value must be greater than or equal to 1. If traffic against the DeployedModel increases, it may dynamically be deployed onto more replicas, and as traffic decreases, some of these extra replicas may be freed.",
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "deployed_model_display_name": {
+            "defaultValue": "",
+            "description": "The display name of the DeployedModel. If not provided upon creation, the Model's display_name is used.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "disable_container_logging": {
+            "defaultValue": false,
+            "description": "For custom-trained Models and AutoML Tabular Models, the container of the DeployedModel instances will send stderr and stdout streams to Stackdriver Logging by default. Please note that the logs incur cost, which are subject to Cloud Logging pricing.  User can disable container logging by setting this flag to true.",
+            "isOptional": true,
+            "parameterType": "BOOLEAN"
+          },
+          "enable_access_logging": {
+            "defaultValue": false,
+            "description": "These logs are like standard server access logs, containing information like timestamp and latency for each prediction request.  Note that Stackdriver logs may incur a cost, especially if your project receives prediction requests at a high queries per second rate (QPS). Estimate your costs before enabling this option.",
+            "isOptional": true,
+            "parameterType": "BOOLEAN"
+          },
+          "explanation_metadata": {
+            "defaultValue": {},
+            "description": "Metadata describing the Model's input and output for explanation. See [more information](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/ExplanationSpec#explanationmetadata).",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "explanation_parameters": {
+            "defaultValue": {},
+            "description": "Parameters that configure explaining information of the Model's predictions. See [more information](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/ExplanationSpec#explanationmetadata).",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "service_account": {
+            "defaultValue": "",
+            "description": "The service account that the DeployedModel's container runs as. Specify the email address of the service account. If this service account is not specified, the container runs as a service account that doesn't have access to the resource project.  Users deploying the Model must have the `iam.serviceAccounts.actAs` permission on this service account.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "traffic_split": {
+            "defaultValue": {},
+            "description": "A map from a DeployedModel's ID to the percentage of this Endpoint's traffic that should be forwarded to that DeployedModel.  If this field is non-empty, then the Endpoint's trafficSplit will be overwritten with it. To refer to the ID of the just being deployed Model, a \"0\" should be used, and the actual ID of the new DeployedModel will be filled in its place by this method. The traffic percentage values must add up to 100.  If this field is empty, then the Endpoint's trafficSplit is not updated.",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "gcp_resources": {
+            "description": "Serialized JSON of `gcp_resources` [proto](https://github.com/kubeflow/pipelines/tree/master/components/google-cloud/google_cloud_pipeline_components/proto) which tracks the deploy Model's long-running operation.",
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-model-upload": {
+      "executorLabel": "exec-model-upload",
+      "inputDefinitions": {
+        "artifacts": {
+          "parent_model": {
+            "artifactType": {
+              "schemaTitle": "google.VertexModel",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "An artifact of a model which to upload a new version to. Only specify this field when uploading a new version. [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.models/upload#request-body)",
+            "isOptional": true
+          },
+          "unmanaged_container_model": {
+            "artifactType": {
+              "schemaTitle": "google.UnmanagedContainerModel",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "The unmanaged container model to be uploaded.  The Model can be passed from an upstream step or imported via a KFP `dsl.importer`. Example:\nfrom kfp import dsl\nfrom google_cloud_pipeline_components.types import artifact_types\n\nimporter_spec = dsl.importer( artifact_uri='gs://managed-pipeline-gcpc-e2e-test/automl-tabular/model', artifact_class=artifact_types.UnmanagedContainerModel, metadata={ 'containerSpec': { 'imageUri': 'us-docker.pkg.dev/vertex-ai/automl-tabular/prediction-server:prod' } })",
+            "isOptional": true
+          }
+        },
+        "parameters": {
+          "description": {
+            "defaultValue": "",
+            "description": "The description of the Model. [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.models#Model)",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "display_name": {
+            "description": "The display name of the Model. The name can be up to 128 characters long and can be consist of any UTF-8 characters. [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/projects.locations.models#Model)",
+            "parameterType": "STRING"
+          },
+          "encryption_spec_key_name": {
+            "defaultValue": "",
+            "description": "Customer-managed encryption key spec for a Model. If set, this Model and all sub-resources of this Model will be secured by this key.  Has the form: `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`. The key needs to be in the same region as where the compute resource is created.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "explanation_metadata": {
+            "defaultValue": {},
+            "description": "Metadata describing the Model's input and output for explanation. Both `explanation_metadata` and `explanation_parameters` must be passed together when used. [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/ExplanationSpec#explanationmetadata)",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "explanation_parameters": {
+            "defaultValue": {},
+            "description": "Parameters to configure explaining for Model's predictions.  [More information.](https://cloud.google.com/vertex-ai/docs/reference/rest/v1/ExplanationSpec#ExplanationParameters)",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "labels": {
+            "defaultValue": {},
+            "description": "The labels with user-defined metadata to organize your model.  Label keys and values can be no longer than 64 characters (Unicode codepoints), can only contain lowercase letters, numeric characters, underscores and dashes. International characters are allowed.  See https://goo.gl/xmQnxf for more information and examples of labels.",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "location": {
+            "defaultValue": "us-central1",
+            "description": "Optional location to upload this Model to. If not set, defaults to `us-central1`.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project": {
+            "defaultValue": "{{$.pipeline_google_cloud_project_id}}",
+            "description": "Project to upload this Model to. Defaults to the project in which the PipelineJob is run.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "version_aliases": {
+            "defaultValue": [],
+            "description": "User provided version aliases so that a model version can be referenced via alias (i.e. `projects/{project}/locations/{location}/models/{modelId}@{version_alias}` instead of auto-generated version id (i.e. `projects/{project}/locations/{location}/models/{modelId}@{versionId}`). The format is [a-z][a-zA-Z0-9-]{0,126}[a-z0-9] to distinguish from versionId. A default version alias will be created for the first version of the model, and there must be exactly one default version alias for a model.",
+            "isOptional": true,
+            "parameterType": "LIST"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "model": {
+            "artifactType": {
+              "schemaTitle": "google.VertexModel",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "Artifact tracking the created Model version."
+          }
+        },
+        "parameters": {
+          "gcp_resources": {
+            "description": "Serialized JSON of `gcp_resources` [proto](https://github.com/kubeflow/pipelines/tree/master/components/google-cloud/google_cloud_pipeline_components/proto) which tracks the upload Model's long-running operation.",
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-process-whatsapp-chat-op": {
+      "executorLabel": "exec-process-whatsapp-chat-op",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "directory": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "dataset_path": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-convert-checkpoints-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "convert_checkpoints_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef convert_checkpoints_op(\n  keras_gcs_model: str,\n  model_paths: dict\n) -> str:\n    import conversion_function\n    import os\n    import util\n    bucket_name, blob_name = os.path.dirname(keras_gcs_model).lstrip(\"gs://\").split(\"/\", 1) \n    print(\"This is the keras passed\", keras_gcs_model)\n    util.download_all_from_blob(bucket_name, model_paths['fine_tuned_keras_blob'], local_destination=model_paths['finetuned_model_dir'])\n    if os.path.exists(\"./model.weights.h5\"):\n        print(\"File exists!\")\n    else:\n        print(\"File does not exist.\")\n    converted_fined_tuned_path = conversion_function.convert_checkpoints(\n        weights_file=model_paths['finetuned_weights_path'],\n        size=model_paths['model_size'],\n        output_dir=model_paths['huggingface_model_dir'],\n        vocab_path=model_paths['finetuned_vocab_path']\n    )\n    util.upload2bs(\n        local_directory = converted_fined_tuned_path, bucket_name = bucket_name,\n        destination_subfolder = model_paths['deployed_model_blob']\n    )\n    return model_paths['deployed_model_uri']\n\n"
+          ],
+          "image": "gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest",
+          "resources": {
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_L4"
+            },
+            "cpuLimit": 0.008,
+            "memoryLimit": 36.0
+          }
+        }
+      },
+      "exec-endpoint-create": {
+        "container": {
+          "args": [
+            "--type",
+            "CreateEndpoint",
+            "--payload",
+            "{\"Concat\": [\"{\", \"\\\"display_name\\\": \\\"\", \"{{$.inputs.parameters['display_name']}}\", \"\\\"\", \", \\\"description\\\": \\\"\", \"{{$.inputs.parameters['description']}}\", \"\\\"\", \", \\\"labels\\\": \", \"{{$.inputs.parameters['labels']}}\", \", \\\"encryption_spec\\\": {\\\"kms_key_name\\\":\\\"\", \"{{$.inputs.parameters['encryption_spec_key_name']}}\", \"\\\"}\", \", \\\"network\\\": \\\"\", \"{{$.inputs.parameters['network']}}\", \"\\\"\", \"}\"]}",
+            "--project",
+            "{{$.inputs.parameters['project']}}",
+            "--location",
+            "{{$.inputs.parameters['location']}}",
+            "--gcp_resources",
+            "{{$.outputs.parameters['gcp_resources'].output_file}}",
+            "--executor_input",
+            "{{$}}"
+          ],
+          "command": [
+            "python3",
+            "-u",
+            "-m",
+            "google_cloud_pipeline_components.container.v1.endpoint.create_endpoint.launcher"
+          ],
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:2.11.0"
+        }
+      },
+      "exec-fine-tunning": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "fine_tunning"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef fine_tunning(\n  dataset_path: InputPath('Dataset'),\n  model_paths: dict\n) -> str:\n    import trainer\n    import json\n    import util\n    import os\n    with open(dataset_path, 'r') as f:\n        dataset = json.load(f)\n    os.makedirs(model_paths['finetuned_model_dir'], exist_ok=True)\n    finetuned_weights_path = os.path.join(model_paths['finetuned_model_dir'], 'model.weights.h5') \n\n    model = trainer.finetune_gemma(dataset, model_paths, False)\n    print(\"Its gonna save it here\", finetuned_weights_path)\n    bucket_name = 'able-analyst-416817-chatbot-v1' # move to parameter.\n    util.upload2bs(\n        local_directory = model_paths['finetuned_model_dir'], bucket_name = bucket_name,\n        destination_subfolder = model_paths['fine_tuned_keras_blob']\n    )\n    model_gcs = \"gs://{}/{}\".format(bucket_name, model_paths['fine_tuned_keras_blob'])  \n    print(\"This is the storage bucket\", model_gcs)\n    return model_gcs\n\n"
+          ],
+          "image": "gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest",
+          "resources": {
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_L4"
+            },
+            "cpuLimit": 0.012,
+            "memoryLimit": 36.0
+          }
+        }
+      },
+      "exec-importer": {
+        "importer": {
+          "artifactUri": {
+            "runtimeParameter": "uri"
+          },
+          "metadata": {
+            "containerSpec": {
+              "args": [
+                "--host=0.0.0.0",
+                "--port=7080",
+                "--tensor-parallel-size=1",
+                "--swap-space=16",
+                "--gpu-memory-utilization=0.95",
+                "--max-model-len=256",
+                "--dtype=bfloat16",
+                "--disable-log-stats"
+              ],
+              "command": [
+                "python",
+                "-m",
+                "vllm.entrypoints.api_server"
+              ],
+              "healthRoute": "/ping",
+              "imageUri": "{{$.inputs.parameters['metadata']}}",
+              "ports": [
+                {
+                  "containerPort": 7080.0
+                }
+              ],
+              "predictRoute": "/generate"
+            }
+          },
+          "typeSchema": {
+            "schemaTitle": "google.UnmanagedContainerModel",
+            "schemaVersion": "0.0.1"
+          }
+        }
+      },
+      "exec-model-deploy": {
+        "container": {
+          "args": [
+            "--type",
+            "DeployModel",
+            "--payload",
+            "{\"Concat\": [\"{\", \"\\\"endpoint\\\": \\\"\", \"{{$.inputs.artifacts['endpoint'].metadata['resourceName']}}\", \"\\\"\", \", \\\"traffic_split\\\": \", \"{{$.inputs.parameters['traffic_split']}}\", \", \\\"deployed_model\\\": {\", \"\\\"model\\\": \\\"\", \"{{$.inputs.artifacts['model'].metadata['resourceName']}}\", \"\\\"\", \", \\\"dedicated_resources\\\": {\", \"\\\"machine_spec\\\": {\", \"\\\"machine_type\\\": \\\"\", \"{{$.inputs.parameters['dedicated_resources_machine_type']}}\", \"\\\"\", \", \\\"accelerator_type\\\": \\\"\", \"{{$.inputs.parameters['dedicated_resources_accelerator_type']}}\", \"\\\"\", \", \\\"accelerator_count\\\": \", \"{{$.inputs.parameters['dedicated_resources_accelerator_count']}}\", \"}\", \", \\\"min_replica_count\\\": \", \"{{$.inputs.parameters['dedicated_resources_min_replica_count']}}\", \", \\\"max_replica_count\\\": \", \"{{$.inputs.parameters['dedicated_resources_max_replica_count']}}\", \"}\", \", \\\"automatic_resources\\\": {\", \"\\\"min_replica_count\\\": \", \"{{$.inputs.parameters['automatic_resources_min_replica_count']}}\", \", \\\"max_replica_count\\\": \", \"{{$.inputs.parameters['automatic_resources_max_replica_count']}}\", \"}\", \", \\\"service_account\\\": \\\"\", \"{{$.inputs.parameters['service_account']}}\", \"\\\"\", \", \\\"disable_container_logging\\\": \", \"{{$.inputs.parameters['disable_container_logging']}}\", \", \\\"enable_access_logging\\\": \", \"{{$.inputs.parameters['enable_access_logging']}}\", \", \\\"explanation_spec\\\": {\", \"\\\"parameters\\\": \", \"{{$.inputs.parameters['explanation_parameters']}}\", \", \\\"metadata\\\": \", \"{{$.inputs.parameters['explanation_metadata']}}\", \"}\", \"}\", \"}\"]}",
+            "--project",
+            "",
+            "--location",
+            "",
+            "--gcp_resources",
+            "{{$.outputs.parameters['gcp_resources'].output_file}}"
+          ],
+          "command": [
+            "python3",
+            "-u",
+            "-m",
+            "google_cloud_pipeline_components.container.v1.endpoint.deploy_model.launcher"
+          ],
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:2.11.0"
+        }
+      },
+      "exec-model-upload": {
+        "container": {
+          "args": [
+            "--type",
+            "UploadModel",
+            "--payload",
+            "{\"Concat\": [\"{\", \"\\\"display_name\\\": \\\"\", \"{{$.inputs.parameters['display_name']}}\", \"\\\"\", \", \\\"description\\\": \\\"\", \"{{$.inputs.parameters['description']}}\", \"\\\"\", \", \\\"explanation_spec\\\": {\", \"\\\"parameters\\\": \", \"{{$.inputs.parameters['explanation_parameters']}}\", \", \\\"metadata\\\": \", \"{{$.inputs.parameters['explanation_metadata']}}\", \"}\", \", \\\"encryption_spec\\\": {\\\"kms_key_name\\\":\\\"\", \"{{$.inputs.parameters['encryption_spec_key_name']}}\", \"\\\"}\", \", \\\"version_aliases\\\": \", \"{{$.inputs.parameters['version_aliases']}}\", \", \\\"labels\\\": \", \"{{$.inputs.parameters['labels']}}\", \", \\\"pipeline_job\\\": \\\"\", \"projects/{{$.inputs.parameters['project']}}/locations/{{$.inputs.parameters['location']}}/pipelineJobs/{{$.pipeline_job_uuid}}\", \"\\\"\", \"}\"]}",
+            "--project",
+            "{{$.inputs.parameters['project']}}",
+            "--location",
+            "{{$.inputs.parameters['location']}}",
+            "--gcp_resources",
+            "{{$.outputs.parameters['gcp_resources'].output_file}}",
+            "--executor_input",
+            "{{$}}",
+            "{\"IfPresent\": {\"InputName\": \"parent_model\", \"Then\": [\"--parent_model_name\", \"{{$.inputs.artifacts['parent_model'].metadata['resourceName']}}\"]}}"
+          ],
+          "command": [
+            "python3",
+            "-u",
+            "-m",
+            "google_cloud_pipeline_components.container.v1.model.upload_model.launcher"
+          ],
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:2.11.0"
+        }
+      },
+      "exec-process-whatsapp-chat-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "process_whatsapp_chat_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef process_whatsapp_chat_op(\n  bucket_name: str,\n  directory: str,\n  dataset_path: OutputPath('Dataset')\n):\n    import data_ingestion\n    import json\n    formatted_messages = data_ingestion.process_whatsapp_chat(bucket_name, directory)\n    with open(dataset_path, 'w') as f:\n        json.dump(formatted_messages, f)\n\n"
+          ],
+          "image": "gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:latest"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "model-deployment"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "convert-checkpoints-op": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-convert-checkpoints-op"
+          },
+          "dependentTasks": [
+            "fine-tunning"
+          ],
+          "inputs": {
+            "parameters": {
+              "keras_gcs_model": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "fine-tunning"
+                }
+              },
+              "model_paths": {
+                "runtimeValue": {
+                  "constant": {
+                    "accelerator_count": 1.0,
+                    "accelerator_type": "NVIDIA_L4",
+                    "deployed_model_blob": "gemma_2b_en/20240322104240",
+                    "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322104240",
+                    "fine_tuned_keras_blob": "gemma_2b_en/keras/20240322104240",
+                    "finetuned_model_dir": "./gemma_2b_en",
+                    "finetuned_vocab_path": "./gemma_2b_en/vocabulary.spm",
+                    "finetuned_weights_path": "./gemma_2b_en/model.weights.h5",
+                    "huggingface_model_dir": "./gemma_2b_en_huggingface",
+                    "machine_type": "g2-standard-8",
+                    "model_name_vllm": "gemma_2b_en-vllm",
+                    "model_size": "2b"
+                  }
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "convert-checkpoints-op"
+          }
+        },
+        "endpoint-create": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-endpoint-create"
+          },
+          "inputs": {
+            "parameters": {
+              "display_name": {
+                "runtimeValue": {
+                  "constant": "pipelines-created-endpoint"
+                }
+              },
+              "project": {
+                "componentInputParameter": "project"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "endpoint-create"
+          }
+        },
+        "fine-tunning": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-fine-tunning"
+          },
+          "dependentTasks": [
+            "process-whatsapp-chat-op"
+          ],
+          "inputs": {
+            "artifacts": {
+              "dataset_path": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "dataset_path",
+                  "producerTask": "process-whatsapp-chat-op"
+                }
+              }
+            },
+            "parameters": {
+              "model_paths": {
+                "runtimeValue": {
+                  "constant": {
+                    "accelerator_count": 1.0,
+                    "accelerator_type": "NVIDIA_L4",
+                    "deployed_model_blob": "gemma_2b_en/20240322104240",
+                    "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322104240",
+                    "fine_tuned_keras_blob": "gemma_2b_en/keras/20240322104240",
+                    "finetuned_model_dir": "./gemma_2b_en",
+                    "finetuned_vocab_path": "./gemma_2b_en/vocabulary.spm",
+                    "finetuned_weights_path": "./gemma_2b_en/model.weights.h5",
+                    "huggingface_model_dir": "./gemma_2b_en_huggingface",
+                    "machine_type": "g2-standard-8",
+                    "model_name_vllm": "gemma_2b_en-vllm",
+                    "model_size": "2b"
+                  }
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "fine-tunning"
+          }
+        },
+        "importer": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-importer"
+          },
+          "dependentTasks": [
+            "convert-checkpoints-op"
+          ],
+          "inputs": {
+            "parameters": {
+              "metadata": {
+                "componentInputParameter": "serving_image"
+              },
+              "uri": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "convert-checkpoints-op"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "importer"
+          }
+        },
+        "model-deploy": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-model-deploy"
+          },
+          "dependentTasks": [
+            "endpoint-create",
+            "model-upload"
+          ],
+          "inputs": {
+            "artifacts": {
+              "endpoint": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "endpoint",
+                  "producerTask": "endpoint-create"
+                }
+              },
+              "model": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "model",
+                  "producerTask": "model-upload"
+                }
+              }
+            },
+            "parameters": {
+              "dedicated_resources_accelerator_count": {
+                "runtimeValue": {
+                  "constant": 1.0
+                }
+              },
+              "dedicated_resources_accelerator_type": {
+                "runtimeValue": {
+                  "constant": "NVIDIA_L4"
+                }
+              },
+              "dedicated_resources_machine_type": {
+                "runtimeValue": {
+                  "constant": "g2-standard-8"
+                }
+              },
+              "dedicated_resources_max_replica_count": {
+                "runtimeValue": {
+                  "constant": 1.0
+                }
+              },
+              "dedicated_resources_min_replica_count": {
+                "runtimeValue": {
+                  "constant": 1.0
+                }
+              },
+              "deployed_model_display_name": {
+                "runtimeValue": {
+                  "constant": "gemma_2b_en-vllm"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "model-deploy"
+          }
+        },
+        "model-upload": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-model-upload"
+          },
+          "dependentTasks": [
+            "importer"
+          ],
+          "inputs": {
+            "artifacts": {
+              "unmanaged_container_model": {
+                "taskOutputArtifact": {
+                  "outputArtifactKey": "artifact",
+                  "producerTask": "importer"
+                }
+              }
+            },
+            "parameters": {
+              "display_name": {
+                "runtimeValue": {
+                  "constant": "Mini Andres, first version automated"
+                }
+              },
+              "project": {
+                "componentInputParameter": "project"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "model-upload"
+          }
+        },
+        "process-whatsapp-chat-op": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-process-whatsapp-chat-op"
+          },
+          "inputs": {
+            "parameters": {
+              "bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "directory": {
+                "componentInputParameter": "directory"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "process-whatsapp-chat-op"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "bucket_name": {
+          "defaultValue": "able-analyst-416817-chatbot-v1",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "directory": {
+          "defaultValue": "input_data/andrehpereh",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "project": {
+          "defaultValue": "able-analyst-416817",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "serving_image": {
+          "defaultValue": "us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01",
+          "isOptional": true,
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.7.0"
+}
