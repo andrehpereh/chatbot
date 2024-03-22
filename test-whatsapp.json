@@ -4,17 +4,11 @@
       "executorLabel": "exec-convert-checkpoints-op",
       "inputDefinitions": {
         "parameters": {
-          "finetuned_weights_path": {
+          "keras_gcs_model": {
             "parameterType": "STRING"
           },
-          "output_dir": {
-            "parameterType": "STRING"
-          },
-          "size": {
-            "parameterType": "STRING"
-          },
-          "vocab_path": {
-            "parameterType": "STRING"
+          "model_paths": {
+            "parameterType": "STRUCT"
           }
         }
       },
@@ -92,12 +86,16 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef convert_checkpoints_op(\n  finetuned_weights_path: str,\n  size: str,\n  output_dir: str,\n  vocab_path: str\n) -> str:\n    import conversion_function\n    print(\"Si jalo el importe\")\n    outputpath = conversion_function.convert_checkpoints(\n        weights_file=finetuned_weights_path,\n        size=size,\n        output_dir=output_dir,\n        vocab_path=vocab_path,\n    )\n    print(\"Y aqui esta el output\", outputpath)\n    return outputpath\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef convert_checkpoints_op(\n  keras_gcs_model: str,\n  model_paths: dict\n) -> str:\n    import conversion_function\n    import os\n    import util\n    bucket_name, blob_name = os.path.dirname(keras_gcs_model).lstrip(\"gs://\").split(\"/\", 1) \n    print(\"This is the keras passed\", keras_gcs_model)\n    util.download_all_from_blob(bucket_name, model_paths['fine_tuned_keras_blob'], local_destination=model_paths['finetuned_model_dir'])\n    if os.path.exists(\"./model.weights.h5\"):\n        print(\"File exists!\")\n    else:\n        print(\"File does not exist.\")\n    converted_fined_tuned_path = conversion_function.convert_checkpoints(\n        weights_file=model_paths['finetuned_weights_path'],\n        size=model_paths['model_size'],\n        output_dir=model_paths['huggingface_model_dir'],\n        vocab_path=model_paths['finetuned_vocab_path']\n    )\n    util.upload2bs(\n        local_directory = converted_fined_tuned_path, bucket_name = bucket_name,\n        destination_subfolder = model_paths['deployed_model_blob']\n    )\n    return model_paths['deployed_model_uri']\n\n"
           ],
           "image": "gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest",
           "resources": {
-            "cpuLimit": 0.012,
-            "memoryLimit": 42.0
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_L4"
+            },
+            "cpuLimit": 0.008,
+            "memoryLimit": 40.0
           }
         }
       },
@@ -116,12 +114,16 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef fine_tunning(\n  dataset_path: InputPath('Dataset'), # InputPath('Dataset')\n  model_paths: dict,\n) -> str:\n    import test_container\n    import trainer\n    import json\n    with open(dataset_path, 'r') as f:\n        dataset = json.load(f)\n    finetuned_weights_path = test_container.add_test(dataset, model_paths, res= \"gs://able-analyst-416817-chatbot-v1/gemma_2b_en_raw/gemma_2b_en/model.weights.h5\")\n    #finetuned_weights_path = trainer.finetune_gemma(dataset, model_paths)\n    print(\"Si funciono este pedo\", finetuned_weights_path)\n    return finetuned_weights_path\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef fine_tunning(\n  dataset_path: InputPath('Dataset'),\n  model_paths: dict,\n  #finetuned_weights_dir: OutputPath('Model'),\n) -> str:\n    # import test_container\n    import trainer\n    import json\n    import util\n    import os\n    with open(dataset_path, 'r') as f:\n        dataset = json.load(f)\n    os.makedirs(model_paths['finetuned_model_dir'], exist_ok=True)\n    finetuned_weights_path = os.path.join(model_paths['finetuned_model_dir'], 'model.weights.h5') \n\n    model = trainer.finetune_gemma(dataset, model_paths, False)\n    print(\"Its gonna save it here\", finetuned_weights_path)\n    #model.save_weights(finetuned_weights_path)\n    #model.preprocessor.tokenizer.save_assets(model_paths['finetuned_model_dir'])\n    bucket_name = 'able-analyst-416817-chatbot-v1' # move to parameter.\n    util.upload2bs(\n        local_directory = model_paths['finetuned_model_dir'], bucket_name = bucket_name,\n        destination_subfolder = model_paths['fine_tuned_keras_blob']\n    )\n    model_gcs = \"gs://{}/{}\".format(bucket_name, model_paths['fine_tuned_keras_blob'])  \n    print(\"This is the storage bucket\", model_gcs)\n    return model_gcs\n\n"
           ],
           "image": "gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest",
           "resources": {
-            "cpuLimit": 0.004,
-            "memoryLimit": 28.0
+            "accelerator": {
+              "count": "1",
+              "type": "NVIDIA_L4"
+            },
+            "cpuLimit": 0.008,
+            "memoryLimit": 40.0
           }
         }
       },
@@ -165,25 +167,28 @@
           ],
           "inputs": {
             "parameters": {
-              "finetuned_weights_path": {
+              "keras_gcs_model": {
                 "taskOutputParameter": {
                   "outputParameterKey": "Output",
                   "producerTask": "fine-tunning"
                 }
               },
-              "output_dir": {
+              "model_paths": {
                 "runtimeValue": {
-                  "constant": "./gs://able-analyst-416817-chatbot-v1/gemma_2b_en_raw/gemma_2b_en_huggingface"
-                }
-              },
-              "size": {
-                "runtimeValue": {
-                  "constant": "2b"
-                }
-              },
-              "vocab_path": {
-                "runtimeValue": {
-                  "constant": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en_raw/gemma_2b_en/vocabulary.spm"
+                  "constant": {
+                    "accelerator_count": 1.0,
+                    "accelerator_type": "NVIDIA_L4",
+                    "deployed_model_blob": "gemma_2b_en/20240322091040",
+                    "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322091040",
+                    "fine_tuned_keras_blob": "gemma_2b_en/keras/20240322091040",
+                    "finetuned_model_dir": "./gemma_2b_en",
+                    "finetuned_vocab_path": "./gemma_2b_en/vocabulary.spm",
+                    "finetuned_weights_path": "./gemma_2b_en/model.weights.h5",
+                    "huggingface_model_dir": "./gemma_2b_en_huggingface",
+                    "machine_type": "g2-standard-8",
+                    "model_name_vllm": "gemma_2b_en-vllm",
+                    "model_size": "2b"
+                  }
                 }
               }
             }
@@ -213,7 +218,22 @@
             },
             "parameters": {
               "model_paths": {
-                "componentInputParameter": "model_paths"
+                "runtimeValue": {
+                  "constant": {
+                    "accelerator_count": 1.0,
+                    "accelerator_type": "NVIDIA_L4",
+                    "deployed_model_blob": "gemma_2b_en/20240322091040",
+                    "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322091040",
+                    "fine_tuned_keras_blob": "gemma_2b_en/keras/20240322091040",
+                    "finetuned_model_dir": "./gemma_2b_en",
+                    "finetuned_vocab_path": "./gemma_2b_en/vocabulary.spm",
+                    "finetuned_weights_path": "./gemma_2b_en/model.weights.h5",
+                    "huggingface_model_dir": "./gemma_2b_en_huggingface",
+                    "machine_type": "g2-standard-8",
+                    "model_name_vllm": "gemma_2b_en-vllm",
+                    "model_size": "2b"
+                  }
+                }
               }
             }
           },
@@ -260,12 +280,13 @@
           "defaultValue": {
             "accelerator_count": 1.0,
             "accelerator_type": "NVIDIA_L4",
-            "deployed_model_blob": "gemma_2b_en/20240319205445",
-            "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240319205445",
-            "finetuned_model_dir": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en_raw/gemma_2b_en",
-            "finetuned_vocab_path": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en_raw/gemma_2b_en/vocabulary.spm",
-            "finetuned_weights_path": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en_raw/gemma_2b_en/model.weights.h5",
-            "huggingface_model_dir": "./gs://able-analyst-416817-chatbot-v1/gemma_2b_en_raw/gemma_2b_en_huggingface",
+            "deployed_model_blob": "gemma_2b_en/20240322091040",
+            "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322091040",
+            "fine_tuned_keras_blob": "gemma_2b_en/keras/20240322091040",
+            "finetuned_model_dir": "./gemma_2b_en",
+            "finetuned_vocab_path": "./gemma_2b_en/vocabulary.spm",
+            "finetuned_weights_path": "./gemma_2b_en/model.weights.h5",
+            "huggingface_model_dir": "./gemma_2b_en_huggingface",
             "machine_type": "g2-standard-8",
             "model_name_vllm": "gemma_2b_en-vllm",
             "model_size": "2b"

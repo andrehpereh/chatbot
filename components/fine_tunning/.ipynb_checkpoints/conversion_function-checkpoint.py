@@ -1,5 +1,6 @@
 import os
 import subprocess
+import argparse
 
 def convert_checkpoints(
     weights_file, size, vocab_path, output_dir,
@@ -37,3 +38,30 @@ def convert_checkpoints(
         print(f"Conversion failed: {e}")
         exit(1)
     return output_dir
+
+
+if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser(description="Checkpoint conversion tool.")
+
+    parser.add_argument("--weights-file", dest="weights_path", type=str, required=True,
+                        help="Path to the weights file.")
+    parser.add_argument("--size", type=str, required=True,
+                        help="Size of the model (e.g., '2b', '7b').")
+    parser.add_argument("--vocab-path", dest="vocab_file", type=str, required=True,
+                        help="Path to the vocabulary file.")
+    parser.add_argument("--output-dir", dest='output_dir', type=str, required=True,
+                        help="Output directory for the converted model.")
+    parser.add_argument("--conversion-https-dir", type=str,
+                        help="Base URL of the conversion script repository.")
+    parser.add_argument("--conversion-script", type=str, 
+                        help="Name of the conversion script within the repository.")
+
+    args = parser.parse_args()
+    hparams = args.__dict__
+    convert_checkpoints(
+        weights_file=args.weights_path, 
+        size=args.size,
+        vocab_path=args.vocab_file,
+        output_dir=args.output_dir
+    ) 
