@@ -1,7 +1,3 @@
-res = !gcloud config get core/project
-PROJECT_ID = res[0]
-
-
 from kfp import dsl
 import kfp as kfp
 from kfp.dsl import OutputPath, Artifact, InputPath
@@ -9,6 +5,7 @@ from kfp import compiler
 from config import Config
 from util import get_model_paths_and_config
 from google.cloud import aiplatform as vertexai
+import os
 
 @dsl.component(
   base_image ='gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:latest'
@@ -30,10 +27,8 @@ def process_whatsapp_chat_op(
 )
 def fine_tunning(
   dataset_path: InputPath('Dataset'),
-  model_paths: dict,
-  #finetuned_weights_dir: OutputPath('Model'),
+  model_paths: dict
 ) -> str:
-    # import test_container
     import trainer
     import json
     import util
@@ -45,8 +40,6 @@ def fine_tunning(
     
     model = trainer.finetune_gemma(dataset, model_paths, False)
     print("Its gonna save it here", finetuned_weights_path)
-    #model.save_weights(finetuned_weights_path)
-    #model.preprocessor.tokenizer.save_assets(model_paths['finetuned_model_dir'])
     bucket_name = 'able-analyst-416817-chatbot-v1' # move to parameter.
     util.upload2bs(
         local_directory = model_paths['finetuned_model_dir'], bucket_name = bucket_name,
@@ -87,23 +80,22 @@ def convert_checkpoints_op(
     return model_paths['deployed_model_uri']
 
 
-
 @kfp.dsl.pipeline(name="Model deployment.")
-def model_deployment_pipeline(
-    project: str = PROJECT_ID, bucket_name: str = "able-analyst-416817-chatbot-v1", directory: str = "input_data/andrehpereh", 
-    model_paths: dict=get_model_paths_and_config(Config.MODEL_NAME)
+def fine_tune_pipeline(
+    project: str = os.environ.get('PROJECT_ID') ,
+    bucket_name: str = "able-analyst-416817-chatbot-v1",
+    directory: str = "input_data/andrehpereh",
+    serving_image: str = "us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01",
 ):
-    WORKING_DIR = 'gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322091040/'
-    VLLM_DOCKER_URI = "us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01"
-    print(Config.MODEL_NAME)
-    model_paths_and_config = get_model_paths_and_config(Config.MODEL_NAME)
 
     from google_cloud_pipeline_components.types import artifact_types
-    from google_cloud_pipeline_components.v1.endpoint import (EndpointCreateOp,
-                                                              ModelDeployOp)
+    from google_cloud_pipeline_components.v1.endpoint import (EndpointCreateOp, ModelDeployOp)
     from google_cloud_pipeline_components.v1.model import ModelUploadOp
     from kfp.dsl import importer_node
+    from util import get_model_paths_and_config
+    from config import Config
 
+    model_paths = get_model_paths_and_config(Config.MODEL_NAME)
 
     port = 7080
     accelerator_count=1
@@ -121,7 +113,7 @@ def model_deployment_pipeline(
     ]
 
     metadata = {
-      "imageUri": VLLM_DOCKER_URI,
+      "imageUri": serving_image,
       "command": ["python", "-m", "vllm.entrypoints.api_server"],
       "args": vllm_args,
       "ports": [
@@ -133,17 +125,15 @@ def model_deployment_pipeline(
       "healthRoute": "/ping"
     }
 
-    # from google_cloud_pipeline_components import ModelUploadOp
-    model_paths = get_model_paths_and_config(Config.MODEL_NAME)
     whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
 
     trainer = fine_tunning(dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths)
-    trainer.set_memory_limit("50G").set_cpu_limit('12.0m').set_accelerator_limit(1).add_node_selector_constraint("NVIDIA_L4")
+    trainer.set_memory_limit("36G").set_cpu_limit("12.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     print("This is the dictionary", model_paths)
     converted = convert_checkpoints_op(
         keras_gcs_model=trainer.output, model_paths=model_paths
-    ).set_memory_limit("50G").set_cpu_limit('8.0m').set_accelerator_limit(1).add_node_selector_constraint("NVIDIA_L4")
+    ).set_memory_limit("36G").set_cpu_limit("8.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     import_unmanaged_model_task = importer_node.importer(
         artifact_uri=converted.output,
@@ -162,27 +152,38 @@ def model_deployment_pipeline(
 
     endpoint_create_op = EndpointCreateOp(
         project=project,
-        display_name="pipelines-created-endpoint",
+        display_name="model_deployment_pipeline: End Point Created",
     )
 
     ModelDeployOp(
         endpoint=endpoint_create_op.outputs["endpoint"],
         model=model_upload_op.outputs["model"],
-        deployed_model_display_name=model_paths_and_config['model_name_vllm'],
-        dedicated_resources_machine_type=model_paths_and_config['machine_type'],
+        deployed_model_display_name=model_paths['model_name_vllm'],
+        dedicated_resources_machine_type=model_paths['machine_type'],
         dedicated_resources_min_replica_count=1,
         dedicated_resources_max_replica_count=1,
-        dedicated_resources_accelerator_type=model_paths_and_config['accelerator_type'],
-        dedicated_resources_accelerator_count=model_paths_and_config['accelerator_count']
+        dedicated_resources_accelerator_type=model_paths['accelerator_type'],
+        dedicated_resources_accelerator_count=model_paths['accelerator_count']
     )
 
+
+if __name__ == '__main__':
+
+    from config import Config
+    from util import get_model_paths_and_config
     
-compiler.Compiler().compile(
-    pipeline_func=model_deployment_pipeline, package_path="model_deployment_pipeline.json"
-)
-vertexai.init(project=PROJECT_ID, location="us-central1")
-vertex_pipelines_job = vertexai.pipeline_jobs.PipelineJob(
-    display_name="test-model_deployment_pipeline",
-    template_path="model_deployment_pipeline.json"
-)
-vertex_pipelines_job.run()
+    model_paths = get_model_paths_and_config(Config.MODEL_NAME)
+    compiler.Compiler().compile(
+        pipeline_func=fine_tune_pipeline, package_path="fine_tune_pipeline.json"
+    )
+    vertexai.init(project=Config.PROJECT_ID, location=Config.REGION)
+    vertex_pipelines_job = vertexai.pipeline_jobs.PipelineJob(
+        display_name="test-fine_tune_pipeline",
+        template_path="fine_tune_pipeline.json",
+        parameter_values={
+            "project": Config.PROJECT_ID,
+            "bucket_name": Config.BUCKET_NAME,
+            "directory": Config.TRAIN_DATA_DIR,
+            "serving_image": Config.SERVING_IMAGE}
+    )
+    vertex_pipelines_job.run()

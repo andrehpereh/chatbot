@@ -1,0 +1,24 @@
+steps:
+  # Build the container image (unchanged, assuming this works)
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME'
+      - '.'
+    dir: './components/pipeline'
+
+  # Push the image to Container Registry (unchanged, assuming this works) 
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME'
+
+  - name: 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME'
+    # args: ['ls']
+    dir: './components/pipeline'
+    args: ['python', 'pipeline.py']
+    env:
+      - 'BUCKET_NAME=$_BUCKET_NAME'
+      - 'BUCKET_URI=$_BUCKET_URI'
+      

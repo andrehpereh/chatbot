@@ -1,7 +1,6 @@
 Cloudbuild components, check the folder/subfolder
-Allow cloudbuild access to everything, (cloud run)
-
-
+Allow cloudbuild access to everything, (cloud run) (artifact registry admin)
+Enable AI Platform Training & Prediction API 
 
 
 # 1. @dsl.container_component would is platform agnostic and could run any programming language (depends on the container image used)

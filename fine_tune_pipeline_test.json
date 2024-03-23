@@ -391,7 +391,7 @@
               "count": "1",
               "type": "NVIDIA_L4"
             },
-            "cpuLimit": 0.008,
+            "cpuLimit": 8.0,
             "memoryLimit": 36.0
           }
         }
@@ -444,7 +444,7 @@
               "count": "1",
               "type": "NVIDIA_L4"
             },
-            "cpuLimit": 0.012,
+            "cpuLimit": 12.0,
             "memoryLimit": 36.0
           }
         }
@@ -587,9 +587,9 @@
                   "constant": {
                     "accelerator_count": 1.0,
                     "accelerator_type": "NVIDIA_L4",
-                    "deployed_model_blob": "gemma_2b_en/20240322104240",
-                    "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322104240",
-                    "fine_tuned_keras_blob": "gemma_2b_en/keras/20240322104240",
+                    "deployed_model_blob": "gemma_2b_en/20240323192751",
+                    "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240323192751",
+                    "fine_tuned_keras_blob": "gemma_2b_en/keras/20240323192751",
                     "finetuned_model_dir": "./gemma_2b_en",
                     "finetuned_vocab_path": "./gemma_2b_en/vocabulary.spm",
                     "finetuned_weights_path": "./gemma_2b_en/model.weights.h5",
@@ -617,7 +617,7 @@
             "parameters": {
               "display_name": {
                 "runtimeValue": {
-                  "constant": "pipelines-created-endpoint"
+                  "constant": "model_deployment_pipeline: End Point Created"
                 }
               },
               "project": {
@@ -654,9 +654,9 @@
                   "constant": {
                     "accelerator_count": 1.0,
                     "accelerator_type": "NVIDIA_L4",
-                    "deployed_model_blob": "gemma_2b_en/20240322104240",
-                    "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240322104240",
-                    "fine_tuned_keras_blob": "gemma_2b_en/keras/20240322104240",
+                    "deployed_model_blob": "gemma_2b_en/20240323192751",
+                    "deployed_model_uri": "gs://able-analyst-416817-chatbot-v1/gemma_2b_en/20240323192751",
+                    "fine_tuned_keras_blob": "gemma_2b_en/keras/20240323192751",
                     "finetuned_model_dir": "./gemma_2b_en",
                     "finetuned_vocab_path": "./gemma_2b_en/vocabulary.spm",
                     "finetuned_weights_path": "./gemma_2b_en/model.weights.h5",
@@ -833,7 +833,6 @@
           "parameterType": "STRING"
         },
         "project": {
-          "defaultValue": "able-analyst-416817",
           "isOptional": true,
           "parameterType": "STRING"
         },
