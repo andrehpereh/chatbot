@@ -64,7 +64,9 @@
       ],
       "env": [
         "BUCKET_NAME=$_BUCKET_NAME",
-        "BUCKET_URI=$_BUCKET_URI"
+        "BUCKET_URI=$_BUCKET_URI",
+        "FINE_TUNE_FLAG=$_FINE_TUNE_FLAG",
+        "EPOCHS=$_EPOCHS"
       ]
     }
   ]
