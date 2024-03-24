@@ -29,7 +29,8 @@ def fine_tunning(
   dataset_path: InputPath('Dataset'),
   model_paths: dict,
   fine_tune_flag: bool,
-  epochs: int
+  epochs: int,
+  model_name: str
 ) -> str:
     import trainer
     import json
@@ -40,7 +41,7 @@ def fine_tunning(
     os.makedirs(model_paths['finetuned_model_dir'], exist_ok=True)
     finetuned_weights_path = os.path.join(model_paths['finetuned_model_dir'], 'model.weights.h5') 
     
-    model = trainer.finetune_gemma(dataset, model_paths, fine_tune_flag, epochs=epochs)
+    model = trainer.finetune_gemma(dataset, model_paths, fine_tune_flag, epochs=epochs, model_name=model_name)
     print("Its gonna save it here", finetuned_weights_path)
     bucket_name = 'able-analyst-416817-chatbot-v1' # move to parameter.
     util.upload2bs(
@@ -89,7 +90,8 @@ def fine_tune_pipeline(
     directory: str = "input_data/andrehpereh",
     serving_image: str = "us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01",
     fine_tune_flag: bool = False,
-    epochs: int = 3
+    epochs: int = 3,
+    model_name: str = 'gemma_2b_en'
 ):
 
     from google_cloud_pipeline_components.types import artifact_types
@@ -131,13 +133,13 @@ def fine_tune_pipeline(
 
     whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
 
-    trainer = fine_tunning(dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag, epochs=epochs)
-    trainer.set_memory_limit("36G").set_cpu_limit("12.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
+    trainer = fine_tunning(dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag, epochs=epochs, model_name=model_name)
+    trainer.set_memory_limit("50G").set_cpu_limit("12.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     print("This is the dictionary", model_paths)
     converted = convert_checkpoints_op(
         keras_gcs_model=trainer.output, model_paths=model_paths
-    ).set_memory_limit("36G").set_cpu_limit("8.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
+    ).set_memory_limit("50G").set_cpu_limit("12.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     import_unmanaged_model_task = importer_node.importer(
         artifact_uri=converted.output,
@@ -189,8 +191,9 @@ if __name__ == '__main__':
             "bucket_name": Config.BUCKET_NAME,
             "directory": Config.TRAIN_DATA_DIR,
             "serving_image": Config.SERVING_IMAGE,
-            "fine_tune_flag": Config.FINE_TUNE_FLAG
-            "epochs": Config.EPOCHS
+            "fine_tune_flag": Config.FINE_TUNE_FLAG,
+            "epochs": Config.EPOCHS,
+            "model_name": Config.MODEL_NAME
         }
     )
     vertex_pipelines_job.run()

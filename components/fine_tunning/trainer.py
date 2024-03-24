@@ -7,7 +7,7 @@ import json
 
 def finetune_gemma(
     data: list[str], model_paths:dict, fine_tune_flag: bool = True, model_name: str='gemma_2b_en',
-    rank_lora: int=6, sequence_length: int=256, epochs: int=2, batch_size: int=1
+    rank_lora: int=6, sequence_length: int=256, epochs: int=15, batch_size: int=1
 ) :
     # keras_nlp.models.GemmaCausalLM.from_preset(model)
     # Reduce the input sequence length to limit memory usage

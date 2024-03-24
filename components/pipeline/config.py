@@ -32,7 +32,7 @@ class Config:
     SERVICE_ACCOUNT_DISPLAY_NAME = "Gemma Vertex AI endpoint"  # Not directly converted 
     SERVICE_ACCOUNT = os.getenv("SERVICE_ACCOUNT", f"{SERVICE_ACCOUNT_NAME}@{PROJECT_ID}.iam.gserviceaccount.com")
     TIMESTAMP = os.getenv("TIMESTAMP", datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
-    MODEL_NAME = "gemma_7b_en"
+    MODEL_NAME = os.getenv("MODEL_NAME", "gemma_2b_en")
     RANK_LORA = os.getenv("RANK_LORA", 3)  # Default value of 6
     SEQUENCE_LENGTH = os.getenv("SEQUENCE_LENGTH", 256)
     EPOCHS = os.getenv("EPOCHS", 1)

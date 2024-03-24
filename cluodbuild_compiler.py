@@ -1,5 +1,6 @@
 import json
 import yaml
+import re
 
 def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cloudbuild.json"):
     """
@@ -16,6 +17,8 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
         ValueError: If any of the child files is not valid YAML, or if the number of descriptions
                     doesn't match the number of child files.
     """
+    substitutions = []
+    variable_pattern = re.compile(r'\$_[A-Z_]+')
 
     if len(child_files) != len(descriptions):
         raise ValueError("Number of descriptions must match the number of child files")
@@ -29,7 +32,9 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
 
             if 'steps' not in child_config:
                 raise ValueError(f"Invalid Cloud Build format in '{child_file}': missing 'steps' key")
-
+            variables = variable_pattern.findall(json.dumps(child_config))
+            for variable in variables:
+                substitutions.append(variable[1:])
             # Add description as a comment before the steps 
             # master_config['steps'].append({'name': f'# --- {description} ---'})
 
@@ -43,4 +48,6 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
             raise ValueError(f"Invalid YAML in '{child_file}': {e}")
     print("This is all", master_config)
     with open(master_filepath, 'w') as f:
-        json.dump(master_config, f, indent=2) 
+        json.dump(master_config, f, indent=2)
+    # flattened_list = [item for sublist in substitutions for item in sublist]
+    return set(substitutions)

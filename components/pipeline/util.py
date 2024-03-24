@@ -41,7 +41,7 @@ def get_model_paths_and_config(model_name):
     assert model_size in ("2b", "7b")
     
     # When runnning local "./"
-    finetuned_model_dir = "./gemma_2b_en"
+    finetuned_model_dir = f"./{model_name}"
     #finetuned_model_dir = f"{Config.BUCKET_URI}/{model_name}_raw/{model_name}"
     
     print(finetuned_model_dir)

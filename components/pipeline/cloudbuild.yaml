@@ -23,4 +23,5 @@ steps:
       - 'BUCKET_URI=$_BUCKET_URI'
       - 'FINE_TUNE_FLAG=$_FINE_TUNE_FLAG'
       - 'EPOCHS=$_EPOCHS'
+      - 'MODEL_NAME=$_MODEL_NAME'
       
