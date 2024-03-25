@@ -2,7 +2,7 @@ import json
 import yaml
 import re
 
-def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cloudbuild.json"):
+def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cloudbuild.json", timeout_hours = 60 * 60):
     """
     Merges multiple Cloud Build YAML files into a single master file, adding component descriptions.
 
@@ -47,6 +47,7 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML in '{child_file}': {e}")
     print("This is all", master_config)
+    master_config['timeout'] = f'{timeout_hours * 60 * 60}s'
     with open(master_filepath, 'w') as f:
         json.dump(master_config, f, indent=2)
     # flattened_list = [item for sublist in substitutions for item in sublist]
