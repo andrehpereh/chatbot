@@ -22,9 +22,5 @@ steps:
   args:
   - 'push'
   - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_FINE_TUNE:$TAG_NAME'
-#availableSecrets:
- # secretManager:
-  #- versionName: 'projects/$PROJECT_ID/secrets/KAGGLE_KEY/versions/1'
-  # - versionName: 'projects/$PROJECT_NUMBER/secrets/KAGGLE_KEY/versions/1'
-   # env: 'KAGGLE_KEY' This needs to be fixed properly.
+
 

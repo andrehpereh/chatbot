@@ -51,3 +51,23 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
         json.dump(master_config, f, indent=2)
     # flattened_list = [item for sublist in substitutions for item in sublist]
     return set(substitutions)
+
+
+def find_missing_elements(my_set, long_string):
+    """
+    This function finds elements from a set that are not present in a long string.
+
+    Args:
+        my_set: A set of strings to check for presence.
+        long_string: A string that might contain elements from the set.
+
+    Returns:
+        A list of elements from the set that are missing in the long string.
+    """
+    missing_elements = set(my_set)
+    for part in long_string.split(','):
+        for element in part.split('='):
+            element = element.strip()
+            if element in missing_elements:
+                missing_elements.remove(element)
+    return list(missing_elements)
