@@ -1,4 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
+from google.cloud import bigquery
+import bcrypt
+import os
 
 app = Flask(__name__)
 
@@ -23,6 +26,11 @@ from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Value
 import re
 
+# Connect to BigQuery
+os.environ['PROJECT_ID'] = 'able-analyst-416817'
+DATASET_ID = 'chatbot'
+TABLE_ID = 'users'
+
 
 def predict_custom_trained_model_sample(
     project: str,
@@ -36,7 +44,7 @@ def predict_custom_trained_model_sample(
     of instances.
     """
     prompt_input = f"Sender:\n{user_input}\n\nAndres Perez:\n",
-    instances={'prompt': prompt_input[0] , 'max_tokens': 256, 'temperature': 1.4, 'top_p': 0.8, 'top_k': 7}
+    instances={'prompt': prompt_input[0] , 'max_tokens': 256, 'temperature': 1.4, 'top_p': 0.8, 'top_k': 4}
     
     # The AI Platform services require regional API endpoints.
     client_options = {"api_endpoint": api_endpoint}
@@ -69,16 +77,68 @@ def predict_custom_trained_model_sample(
 
 
 @app.route('/')
-def login():
-    return render_template('login.html')
+def index():
+    return render_template('index.html')
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    username = request.form['username']
-    password = request.form['password']
-    # Here you can implement your authentication logic
-    # For now, we'll just redirect to the chat page
-    return redirect(url_for('chat_page'))
+@app.route('/signup', methods=['POST'])
+def signup():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+
+        # Data validation
+        error_message = None
+        if not email or not password or not confirm_password:
+            error_message = 'Please fill in all fields.'
+        elif password != confirm_password:
+            error_message = 'Passwords do not match.'
+        # Add more validation rules as needed (e.g., email format, password strength)
+
+        if error_message:
+            return error_message, 400
+
+        # Hash the password for security
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        
+        client = bigquery.Client(os.environ.get('PROJECT_ID'))
+        table_ref = client.dataset(DATASET_ID).table(TABLE_ID)
+        table = client.get_table(table_ref)
+
+        # Insert data with error handling
+        row_to_insert = [(email, hashed_password.decode('utf-8'))]
+        errors = client.insert_rows(table, row_to_insert)
+        if errors:  # Check if there were errors
+            return 'Error submitting data: {}'.format(errors), 500
+        else:
+            return redirect(url_for('chat_page'))
+
+@app.route('/login', methods=['POST'])
+def login():
+    print("Si entro en este pedo")
+    if request.method == 'POST':
+        email = request.form['email']
+        print("Si entro en este email", email)
+        password = request.form['password']
+        print("Si entro en este password", password)
+
+        # Fetch user data from BigQuery
+        client = bigquery.Client(os.environ.get('PROJECT_ID'))
+        query = f"SELECT password_hash FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{TABLE_ID}` WHERE username = '{email}'"
+        print("This is el query...", query)
+        results = client.query(query).result()
+        print("This is the results", results, type(results))
+        stored_password_hash = None
+        for row in results:
+            stored_password_hash = row.password_hash  # Assuming 'password' is the column name
+
+        # Verify password
+        if stored_password_hash and bcrypt.checkpw(password.encode('utf-8'), stored_password_hash.encode('utf-8')):
+            # Successful login
+            return redirect(url_for('chat_page'))
+        else:
+            # Invalid credentials
+            return 'Invalid email or password', 401
 
 @app.route('/chat_page')
 def chat_page():
@@ -88,14 +148,15 @@ def chat_page():
 def send_message():
     user_message = request.json['message']
     # Placeholder chatbot code
-    response = predict_custom_trained_model_sample(
-        project="24796876098",
-        endpoint_id="2459943961893011456",
-        location="us-central1",
-        user_input= user_message,
-    )
+    #response = predict_custom_trained_model_sample(
+     #   project="24796876098",
+      #  endpoint_id="7974742443096539136",
+       # location="us-central1",
+        #user_input= user_message,
+    #)
     print(user_message)
     print("Esta es la respuesta")
+    response = "Hello"
     print(response)
     return jsonify({'message': response})
 
