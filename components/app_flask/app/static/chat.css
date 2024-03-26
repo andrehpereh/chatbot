@@ -1,0 +1,51 @@
+body {
+  background-image: url('andrehpereh10.png'); /* Add your background image URL */
+  /*background-size: ; 100%; /* Zoom out the background image to fit within the container */
+  /*background-size: cover; /* Cover the entire page */
+  /*background-repeat: no-repeat; /* Prevent the background image from repeating */
+  background-position: center; /* Center the background image */
+  background-attachment: fixed;
+  font-family: Arial, sans-serif;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+h1 {
+  text-align: center;
+}
+#chat-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+#chat-messages {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+#user-input {
+  width: calc(100% - 80px); /* Adjust width to leave space for the button */
+  font-size: 16px; /* Increase font size */
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-right: 10px;
+}
+#send-button {
+  font-size: 16px;
+  padding: 10px 20px;
+  background-color: #007bff;
+          color: #fff;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+        }
+        #send-button:hover {
+          background-color: #0056b3;
+        }

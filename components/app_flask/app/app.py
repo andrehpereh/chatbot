@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-from google.cloud import bigquery
+from google.cloud import bigquery, storage
+from werkzeug.datastructures import FileStorage
 import bcrypt
 import os
 
@@ -29,7 +30,10 @@ import re
 # Connect to BigQuery
 os.environ['PROJECT_ID'] = 'able-analyst-416817'
 DATASET_ID = 'chatbot'
-TABLE_ID = 'users'
+USERS_TABLE = 'users'
+USER_TRAINING_STATUS = 'user_training_status'
+STORAGE_BUCKET = 'personalize-chatbots-v1'
+
 
 
 def predict_custom_trained_model_sample(
@@ -75,11 +79,6 @@ def predict_custom_trained_model_sample(
     else:
         return "Error: Prediction not found in the response."
 
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/signup', methods=['POST'])
 def signup():
     if request.method == 'POST':
@@ -102,7 +101,7 @@ def signup():
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         
         client = bigquery.Client(os.environ.get('PROJECT_ID'))
-        table_ref = client.dataset(DATASET_ID).table(TABLE_ID)
+        table_ref = client.dataset(DATASET_ID).table(USERS_TABLE)
         table = client.get_table(table_ref)
 
         # Insert data with error handling
@@ -111,7 +110,7 @@ def signup():
         if errors:  # Check if there were errors
             return 'Error submitting data: {}'.format(errors), 500
         else:
-            return redirect(url_for('chat_page'))
+            return redirect(url_for('upload'))
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -124,21 +123,60 @@ def login():
 
         # Fetch user data from BigQuery
         client = bigquery.Client(os.environ.get('PROJECT_ID'))
-        query = f"SELECT password_hash FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{TABLE_ID}` WHERE username = '{email}'"
+
+        # Check passwords.
+        query = f"SELECT password_hash FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USERS_TABLE}` WHERE username = '{email}'"
         print("This is el query...", query)
         results = client.query(query).result()
         print("This is the results", results, type(results))
         stored_password_hash = None
         for row in results:
+            print("This is each row", row)
             stored_password_hash = row.password_hash  # Assuming 'password' is the column name
+        # Check if user already trained.
+        query = f"SELECT training_status FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USER_TRAINING_STATUS}` WHERE username = '{email}'"
+        print("This is el query...", query)
+        results = client.query(query).result()
+        print("This is the results", results, type(results))
+        user_training_status = None
+        for row in results:
+            print("This is each row", row)
+            user_training_status = row.training_status  # Assuming 'training_status' is the column name
 
         # Verify password
         if stored_password_hash and bcrypt.checkpw(password.encode('utf-8'), stored_password_hash.encode('utf-8')):
             # Successful login
-            return redirect(url_for('chat_page'))
+            if user_training_status:
+                return redirect(url_for('chat_page'))
+            else:
+                return redirect(url_for('upload'))
         else:
             # Invalid credentials
             return 'Invalid email or password', 401
+    
+@app.route('/upload')
+def upload():
+    return render_template('upload.html')
+
+@app.route('/handle_upload', methods=['POST'])
+def handle_upload():
+    print("Creo que si jalo, python")
+    for file in request.files.getlist('files'):
+        print(file)
+        print("This is the type", type(file))
+        client = storage.Client(os.environ.get('PROJECT_ID'))
+        bucket = client.get_bucket(STORAGE_BUCKET)
+        blob = bucket.blob(file.filename)
+        blob.upload_from_string(FileStorage(file).stream.read())
+        print("Uploading", file.filename, blob.name)
+        # blob.upload_from_filename(file.filename)
+    text_data = request.form.get('text')
+    return "Upload Successful!", 200 
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
 
 @app.route('/chat_page')
 def chat_page():

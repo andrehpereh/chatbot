@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multi-Media Uploader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='upload.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Minimalistic File Uploader</h1>
+        <input type="file" id="fileInput" multiple accept="image/*, audio/*"> 
+        <input type="text" id="textInput" placeholder="Enter some text (optional)">
+        <button id="uploadButton">Upload</button>
+        <div id="preview"></div>  
+    </div>
+    <script src="{{ url_for('static', filename='upload.js') }}"> </script>
+</body>
+</html>
+
