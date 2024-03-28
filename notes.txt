@@ -2,6 +2,7 @@ Cloudbuild components, check the folder/subfolder
 Allow cloudbuild access to everything, (cloud run) (artifact registry admin)
 Enable AI Platform Training & Prediction API 
 Enable Cloud Build API for triggering runs with Github.
+Gran cloud permission to run vertex ai pipeline 
 
 
 # 1. @dsl.container_component would is platform agnostic and could run any programming language (depends on the container image used)
@@ -15,3 +16,14 @@ Enable Cloud Build API for triggering runs with Github.
 # We need to create the tables in Bigquery to store the users data.
 
 # We need to create the bucket to store the users files.
+
+# We need to create a PUB/SUB topic to get the messages.
+# Give Pub/Sub admin to the service account.
+
+#Default variables should be stored in a reachable location for all the components/containers (Blob storage). The models should be stored in the users folder.
+
+# Check how to include model_name as a parameters instead of always declearing it as ENV 
+
+
+
+find . -type f -not -path '*/\.ipynb_checkpoints/*' | xargs git add

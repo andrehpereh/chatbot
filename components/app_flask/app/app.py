@@ -1,10 +1,10 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
-from google.cloud import bigquery, storage
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from google.cloud import bigquery, storage, pubsub_v1
 from werkzeug.datastructures import FileStorage
-import bcrypt
-import os
+import bcrypt, os, base64, json
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
 
 # Copyright 2020 Google LLC
 #
@@ -32,9 +32,9 @@ os.environ['PROJECT_ID'] = 'able-analyst-416817'
 DATASET_ID = 'chatbot'
 USERS_TABLE = 'users'
 USER_TRAINING_STATUS = 'user_training_status'
-STORAGE_BUCKET = 'personalize-chatbots-v1'
-
-
+BUCKET_NAME = "personalize-chatbots-v1"
+print(BUCKET_NAME)
+PUBSUB_TOPIC = 'your-pipeline-trigger-topic'
 
 def predict_custom_trained_model_sample(
     project: str,
@@ -110,6 +110,8 @@ def signup():
         if errors:  # Check if there were errors
             return 'Error submitting data: {}'.format(errors), 500
         else:
+            # session['user_id'] = user_id  # Assuming you fetched the user's ID
+            session['email'] = email 
             return redirect(url_for('upload'))
 
 @app.route('/login', methods=['POST'])
@@ -125,7 +127,7 @@ def login():
         client = bigquery.Client(os.environ.get('PROJECT_ID'))
 
         # Check passwords.
-        query = f"SELECT password_hash FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USERS_TABLE}` WHERE username = '{email}'"
+        query = f"SELECT password_hash FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USERS_TABLE}` WHERE email = '{email}'"
         print("This is el query...", query)
         results = client.query(query).result()
         print("This is the results", results, type(results))
@@ -134,7 +136,7 @@ def login():
             print("This is each row", row)
             stored_password_hash = row.password_hash  # Assuming 'password' is the column name
         # Check if user already trained.
-        query = f"SELECT training_status FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USER_TRAINING_STATUS}` WHERE username = '{email}'"
+        query = f"SELECT training_status FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USER_TRAINING_STATUS}` WHERE email = '{email}'"
         print("This is el query...", query)
         results = client.query(query).result()
         print("This is the results", results, type(results))
@@ -146,6 +148,8 @@ def login():
         # Verify password
         if stored_password_hash and bcrypt.checkpw(password.encode('utf-8'), stored_password_hash.encode('utf-8')):
             # Successful login
+            print("This is the email", email)
+            session['email'] = email 
             if user_training_status:
                 return redirect(url_for('chat_page'))
             else:
@@ -153,28 +157,76 @@ def login():
         else:
             # Invalid credentials
             return 'Invalid email or password', 401
-    
+
 @app.route('/upload')
 def upload():
+    email = session.get('email')
+    print("This is the email, ahuevito", email)
+    if not email:  
+        # Redirect to login if not logged in
+        print("Nos regresamos al home")
+        return redirect(url_for('home'))
+    print("Aqui llegaaaa")
     return render_template('upload.html')
 
 @app.route('/handle_upload', methods=['POST'])
 def handle_upload():
+    files_metadata = []
+    email = session.get('email')
+    print("This is the email, ahuevito", email)
+    print(type(email))
+    text_data = request.form.get('text')
+    print(text_data)
+    model_name = request.form.get('model_name')
+    epochs = request.form.get('epochs')
+    print(f"Selected model: {model_name}, Epochs: {epochs}")
+    user_name = re.match(r'^([^@]+)', str(email)).group(1)
+    print("This is the text", text_data)
+
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(os.environ.get('PROJECT_ID'), PUBSUB_TOPIC)
+    print("This is the topic path", topic_path)
+    blob_folder = os.path.join(user_name, 'input_data')
+
+    if not email:
+        print("Nos regresamos al home")
+        # Redirect to login if not logged in
+        return redirect(url_for('home'))
     print("Creo que si jalo, python")
     for file in request.files.getlist('files'):
         print(file)
         print("This is the type", type(file))
         client = storage.Client(os.environ.get('PROJECT_ID'))
-        bucket = client.get_bucket(STORAGE_BUCKET)
-        blob = bucket.blob(file.filename)
+        bucket = client.get_bucket(BUCKET_NAME)
+        blob_string = os.path.join(blob_folder, file.filename)
+        blob = bucket.blob(blob_string)
         blob.upload_from_string(FileStorage(file).stream.read())
         print("Uploading", file.filename, blob.name)
-        # blob.upload_from_filename(file.filename)
-    text_data = request.form.get('text')
+        files_metadata.append({
+            "file_path": f"gs://{BUCKET_NAME}/{blob_string}",
+            "filename": file.filename  # Add filename to metadata
+        })
+
+    # After all uploads are complete, prepare the message
+    message_data = {
+        "user_name": user_name,
+        "files": files_metadata,
+        "blob_folder": blob_folder,
+        "model_name": model_name,
+        "epochs": epochs,
+        "bucket_name": BUCKET_NAME,
+        "project_id": os.environ.get('PROJECT_ID')
+        
+    }
+    message_data_json = json.dumps(message_data)
+    message_data_bytes = message_data_json.encode('utf-8')
+    print(message_data_bytes)
+    publisher.publish(topic_path, message_data_bytes)
+
     return "Upload Successful!", 200 
 
-@app.route('/')
-def index():
+@app.route('/home')
+def home():
     return render_template('index.html')
 
 

@@ -15,12 +15,10 @@ steps:
       - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME'
 
   - name: 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME'
-    # args: ['ls']
     dir: './components/pipeline'
     args: ['python', 'pipeline.py']
     env:
       - 'BUCKET_NAME=$_BUCKET_NAME'
-      - 'BUCKET_URI=$_BUCKET_URI'
       - 'FINE_TUNE_FLAG=$_FINE_TUNE_FLAG'
       - 'EPOCHS=$_EPOCHS'
       - 'MODEL_NAME=$_MODEL_NAME'

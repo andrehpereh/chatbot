@@ -34,24 +34,25 @@ def get_model_paths_and_config(model_name):
     ]
 
     if model_name not in allowed_models:
-        raise ValueError(f"Invalid model_name. Supported models are: {allowed_models}")
+        raise ValueError(f"Invalid {model_name}. Supported models are: {allowed_models}")
 
     # Construct paths
     model_size = model_name.split("_")[-2]
     assert model_size in ("2b", "7b")
-    
+
     # When runnning local "./"
     finetuned_model_dir = f"./{model_name}"
+    bucket_uri = f"gs://{Config.BUCKET_NAME}"
     #finetuned_model_dir = f"{Config.BUCKET_URI}/{model_name}_raw/{model_name}"
     
     print(finetuned_model_dir)
     finetuned_weights_path = f"{finetuned_model_dir}/model.weights.h5"
     finetuned_vocab_path = f"{finetuned_model_dir}/vocabulary.spm"
     huggingface_model_dir = f"{finetuned_model_dir}_huggingface"
-    timestamp = Config.TIMESTAMP
-    deployed_model_blob = f"{model_name}/{timestamp}"
-    fine_tuned_keras_blob = f"{model_name}/keras/{timestamp}"
-    deployed_model_uri = f"{Config.BUCKET_URI}/{deployed_model_blob}"  # Assuming BUCKET_URI is globally defined
+    timestamp = os.path.join(os.getenv("USER_NAME", "andrehpereh1"), Config.TIMESTAMP)
+    deployed_model_blob = os.path.join(timestamp, model_name, 'huggingface')
+    fine_tuned_keras_blob = os.path.join(timestamp, model_name, 'keras')
+    deployed_model_uri = f"{bucket_uri}/{deployed_model_blob}"  # Assuming BUCKET_URI is globally defined
 
     # Determine machine configuration
     machine_config = {
@@ -99,7 +100,7 @@ def upload2bs(local_directory, bucket_name, destination_subfolder=""):
             # Construct the path within the bucket
             blob_path = os.path.join(destination_subfolder, os.path.relpath(local_path, local_directory))
             blob = bucket.blob(blob_path)
-            #blob.upload_from_filename(local_path)
+            blob.upload_from_filename(local_path)
             print(f"Uploaded {local_path} to gs://{bucket_name}/{blob_path}")
     destination_path = os.path.dirname(f"gs://{bucket_name}/{blob_path}")
     return destination_path

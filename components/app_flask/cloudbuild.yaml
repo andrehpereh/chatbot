@@ -22,5 +22,5 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME']
 - name: 'gcr.io/cloud-builders/gcloud'
-  args: ['run', 'deploy', 'chattingwithandreh', '--image', 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME', '--region', '$LOCATION', '--platform', 'managed', '--allow-unauthenticated', '--port', '5000']
+  args: ['run', 'deploy', 'chattingbot_dev', '--image', 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME', '--region', '$LOCATION', '--platform', 'managed', '--allow-unauthenticated', '--port', '5000']
 

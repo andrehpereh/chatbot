@@ -7,8 +7,16 @@
 <body>
     <div class="container">
         <h1>Minimalistic File Uploader</h1>
-        <input type="file" id="fileInput" multiple accept="image/*, audio/*"> 
+        <input type="file" id="fileInput" multiple accept="image/*, audio/*, text/plain"> 
         <input type="text" id="textInput" placeholder="Enter some text (optional)">
+        <label for="model_name">Model Name:</label>
+        <select id="model_name">
+            <option value="gemma_2b_en">gemma_2b_en</option>
+            <option value="gemma_7b_en">gemma_7b_en</option>
+        </select>
+        <label for="epochs">Epochs:</label>
+        <select id="epochs">
+            </select>
         <button id="uploadButton">Upload</button>
         <div id="preview"></div>  
     </div>

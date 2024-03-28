@@ -1,11 +1,14 @@
 from kfp import dsl
 import kfp as kfp
 from kfp.dsl import OutputPath, Artifact, InputPath
-from kfp import compiler
 from config import Config
 from util import get_model_paths_and_config
-from google.cloud import aiplatform as vertexai
 import os
+
+
+
+
+print(kfp.__version__)
 
 @dsl.component(
   base_image ='gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:latest'
@@ -83,7 +86,7 @@ def convert_checkpoints_op(
     return model_paths['deployed_model_uri']
 
 
-@kfp.dsl.pipeline(name="Model deployment.")
+@dsl.pipeline(name="Model deployment.")
 def fine_tune_pipeline(
     project: str = os.environ.get('PROJECT_ID') ,
     bucket_name: str = "able-analyst-416817-chatbot-v1",
@@ -93,14 +96,15 @@ def fine_tune_pipeline(
     epochs: int = 3,
     model_name: str = 'gemma_2b_en'
 ):
-
+    print("Aqui esta el mismo pedo", bucket_name)
+    print("Aqui esta el mismo pedo", type(bucket_name))
+    from config import Config
     from google_cloud_pipeline_components.types import artifact_types
     from google_cloud_pipeline_components.v1.endpoint import (EndpointCreateOp, ModelDeployOp)
     from google_cloud_pipeline_components.v1.model import ModelUploadOp
     from kfp.dsl import importer_node
     from util import get_model_paths_and_config
-    from config import Config
-
+    print("This is the model name", Config.MODEL_NAME)
     model_paths = get_model_paths_and_config(Config.MODEL_NAME)
 
     port = 7080
@@ -174,18 +178,20 @@ def fine_tune_pipeline(
 
 
 if __name__ == '__main__':
-
+    from kfp import compiler
+    from google.cloud import aiplatform as vertexai
     from config import Config
-    from util import get_model_paths_and_config
-    
-    model_paths = get_model_paths_and_config(Config.MODEL_NAME)
+    # from util import get_model_paths_and_config
+    print("This is the model name", Config.MODEL_NAME, "Ahuevito")
+    # model_paths = get_model_paths_and_config(Config.MODEL_NAME)
+    pipeline_name = f"fine_tune_pipeline{Config.USER_NAME}.json"
     compiler.Compiler().compile(
-        pipeline_func=fine_tune_pipeline, package_path="fine_tune_pipeline.json"
+        pipeline_func=fine_tune_pipeline, package_path=pipeline_name
     )
     vertexai.init(project=Config.PROJECT_ID, location=Config.REGION)
     vertex_pipelines_job = vertexai.pipeline_jobs.PipelineJob(
         display_name="test-fine_tune_pipeline",
-        template_path="fine_tune_pipeline.json",
+        template_path=pipeline_name,
         parameter_values={
             "project": Config.PROJECT_ID,
             "bucket_name": Config.BUCKET_NAME,

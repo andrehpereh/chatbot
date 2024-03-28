@@ -9,4 +9,3 @@ WORKDIR /pipeline
 RUN ls
 RUN pwd
 RUN pip list
-# ENTRYPOINT ["python"]  

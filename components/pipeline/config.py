@@ -22,18 +22,19 @@ class Config:
     # Lab user environment resource settings
     PROJECT_ID = os.getenv("PROJECT_ID", "able-analyst-416817")  # Replace with the logic to get your project ID 
     # Other Variables
-    KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", "andrehpereh1") 
+    KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", "andrehpereh1")
+    USER_NAME = os.getenv("USER_NAME", "master")
     KAGGLE_KEY = os.getenv("KAGGLE_KEY", "5859e39806d9456749dcbac685f04bc9")
     KERAS_BACKEND = os.getenv("KERAS_BACKEND", "tensorflow")
     REGION = os.getenv("REGION", "us-central1")
     BUCKET_NAME = os.getenv("BUCKET_NAME", f"{PROJECT_ID}-chatbot-v1")
-    BUCKET_URI = os.getenv("BUCKET_URI", f"gs://{BUCKET_NAME}") 
+    # BUCKET_URI = os.getenv("BUCKET_URI", f"gs://{BUCKET_NAME}")
     SERVICE_ACCOUNT_NAME = os.getenv("SERVICE_ACCOUNT_NAME", "gemma-vertexai-chatbot")
     SERVICE_ACCOUNT_DISPLAY_NAME = "Gemma Vertex AI endpoint"  # Not directly converted 
     SERVICE_ACCOUNT = os.getenv("SERVICE_ACCOUNT", f"{SERVICE_ACCOUNT_NAME}@{PROJECT_ID}.iam.gserviceaccount.com")
     TIMESTAMP = os.getenv("TIMESTAMP", datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
     MODEL_NAME = os.getenv("MODEL_NAME", "gemma_2b_en")
-    RANK_LORA = os.getenv("RANK_LORA", 3)  # Default value of 6
+    RANK_LORA = os.getenv("RANK_LORA", 6)  # Default value of 6
     SEQUENCE_LENGTH = os.getenv("SEQUENCE_LENGTH", 256)
     EPOCHS = os.getenv("EPOCHS", 1)
     BATCH_SIZE = os.getenv("BATCH_SIZE", 1)
