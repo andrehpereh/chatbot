@@ -1,3 +1,5 @@
+find . -type f \( -path '*/\.ipynb_checkpoints/*' -or -path '*/\__pycache__/*' \) -exec rm -rf {} \;
+
 Cloudbuild components, check the folder/subfolder
 Allow cloudbuild access to everything, (cloud run) (artifact registry admin)
 Enable AI Platform Training & Prediction API 
@@ -34,6 +36,15 @@ gcloud builds triggers create github \
 
 
 find . -type f \( -not -path '*/\.ipynb_checkpoints/*' -and -not -path '*/\__pycache__/*' \) -exec git add {} +
+
+
+
+
+
+
+
+
+
 
 
 
