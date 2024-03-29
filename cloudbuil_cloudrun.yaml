@@ -20,7 +20,7 @@ steps:
   args:
     - 'functions' 
     - 'deploy' 
-    - 'hello_world_trigger' 
+    - 'pipeline_trigger_master_website' 
     - '--gen2' 
     - '--region=us-central1' 
     - '--runtime=python39'
