@@ -27,5 +27,3 @@ steps:
       - 'EPOCHS=$_EPOCHS'
       - 'MODEL_NAME=$_MODEL_NAME'
       - 'TAG_NAME=$TAG_NAME'
-    id: 'P_C'
-    waitFor: ['P_B']  
