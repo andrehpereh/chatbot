@@ -1,0 +1,8 @@
+keras-nlp==0.8.2
+keras==3.0.5
+accelerate==0.28.0
+sentencepiece==0.2.0
+transformers==4.38
+fire==0.6.0
+google-cloud-storage==2.16.0
+

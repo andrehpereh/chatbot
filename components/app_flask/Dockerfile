@@ -5,10 +5,10 @@ RUN pwd
 RUN ls
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install -U -r requirements.txt
 RUN ls
 
-COPY . /app
+COPY . /app 
 
 WORKDIR /app
 
@@ -17,4 +17,4 @@ EXPOSE 5000
 RUN pwd
 RUN ls
 
-CMD ["python", "app/app.py"]  
+CMD ["python", "-m", "app.app"]  

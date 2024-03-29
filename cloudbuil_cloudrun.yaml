@@ -1,0 +1,32 @@
+steps:
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: 
+    - 'run'
+    - 'deploy' 
+    - 'chattingbot' 
+    - '--image'
+    - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$_PROD_TAG'
+    - '--region'
+    - '$LOCATION'
+    - '--platform'
+    - 'managed'
+    - '--allow-unauthenticated'
+    - '--port'
+    - '5000'
+  id: 'WS_A'
+  waitFor: ['-']
+
+- name: 'gcr.io/cloud-builders/gcloud'
+  args:
+    - 'functions' 
+    - 'deploy' 
+    - 'pipeline_trigger_master_website' 
+    - '--gen2' 
+    - '--region=us-central1' 
+    - '--runtime=python39'
+    - '--source=./components/cloud_functions/'
+    - '--entry-point=trigger_pipeline_cloud_function' 
+    - '--trigger-topic=your-pipeline-trigger-topic' 
+    - '--memory=2GiB'
+  id: 'WS_B'
+  waitFor: ['-']
