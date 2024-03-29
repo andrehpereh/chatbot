@@ -92,8 +92,7 @@ def fine_tune_pipeline(
     epochs: int = 3,
     model_name: str = 'gemma_2b_en'
 ):
-    print("Aqui esta el mismo pedo", bucket_name)
-    print("Aqui esta el mismo pedo", type(bucket_name))
+
     from config import Config
     from google_cloud_pipeline_components.types import artifact_types
     from google_cloud_pipeline_components.v1.endpoint import (EndpointCreateOp, ModelDeployOp)
@@ -179,6 +178,11 @@ if __name__ == '__main__':
     from config import Config
     # from util import get_model_paths_and_config
     print("This is the model name", Config.MODEL_NAME, "Ahuevito")
+    print("This is the directory", Config.TRAIN_DATA_DIR, "Ahuevito")
+    print("This is the BUCKET_NAME", Config.BUCKET_NAME, "Ahuevito")
+    print("This is the FINE_TUNE_FLAG", Config.FINE_TUNE_FLAG, "Ahuevito")
+    print("This is the EPOCHS", Config.EPOCHS, "Ahuevito")
+
     # model_paths = get_model_paths_and_config(Config.MODEL_NAME)
     pipeline_name = f"fine_tune_pipeline{Config.USER_NAME}.json"
     compiler.Compiler().compile(
