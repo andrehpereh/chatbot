@@ -4,14 +4,10 @@ from kfp.dsl import OutputPath, Artifact, InputPath
 from config import Config
 from util import get_model_paths_and_config
 import os
-
-
-
-
-print(kfp.__version__)
+TAG_NAME = os.environ.get('TAG_NAME', 'latest') 
 
 @dsl.component(
-  base_image ='gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:latest'
+  base_image =f"gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:{TAG_NAME}"
 )
 def process_whatsapp_chat_op(
   bucket_name: str,
@@ -26,7 +22,7 @@ def process_whatsapp_chat_op(
 
 
 @dsl.component(
-  base_image = 'gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest'
+  base_image = f"gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:{TAG_NAME}"
 )
 def fine_tunning(
   dataset_path: InputPath('Dataset'),
@@ -57,7 +53,7 @@ def fine_tunning(
     
 
 @dsl.component(
-  base_image = 'gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:latest'
+  base_image = f"gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:{TAG_NAME}"
 )
 def convert_checkpoints_op(
   keras_gcs_model: str,

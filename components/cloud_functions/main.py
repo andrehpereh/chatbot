@@ -13,7 +13,7 @@ def trigger_pipeline_cloud_function(cloud_event):
     try:
         parameters = base64.b64decode(cloud_event.data["message"]["data"])
         parameters = json.loads(parameters.decode('utf-8'))
-        print("This are the parameters", parameters)
+        print("Parameters fine tunning personalized bot:", parameters)
         os.environ['USER_NAME'] = parameters['user_name']
         os.environ['MODEL_NAME'] = parameters['model_name']
         os.environ['MY_API_KEY'] = parameters['project_id'] 
@@ -31,10 +31,7 @@ def trigger_pipeline_cloud_function(cloud_event):
         compiler.Compiler().compile(
             pipeline_func=pipeline_trigger_pipeline_chatbot, package_path=pipeline_name
         )
-
         vertexai.init(project=parameters['project_id'])
-
-        print("This is the model_name from env", os.environ.get('MODEL_NAME'))
         vertex_pipelines_job = vertexai.pipeline_jobs.PipelineJob(
             display_name="cloud_function_trigger_fine_tunning_pipeline",
             template_path=pipeline_name

@@ -26,4 +26,7 @@ Gran cloud permission to run vertex ai pipeline
 
 
 
-find . -type f -not -path '*/\.ipynb_checkpoints/*' | xargs git add
+find . -type f \( -not -path '*/\.ipynb_checkpoints/*' -and -not -path '*/\__pycache__/*' \) -exec git add {} +
+
+
+

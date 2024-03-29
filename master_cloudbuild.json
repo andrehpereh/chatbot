@@ -66,7 +66,8 @@
         "BUCKET_NAME=$_BUCKET_NAME",
         "FINE_TUNE_FLAG=$_FINE_TUNE_FLAG",
         "EPOCHS=$_EPOCHS",
-        "MODEL_NAME=$_MODEL_NAME"
+        "MODEL_NAME=$_MODEL_NAME",
+        "TAG_NAME=$TAG_NAME"
       ]
     },
     {
@@ -91,7 +92,7 @@
       "args": [
         "run",
         "deploy",
-        "chattingwithandreh",
+        "chattingbot_dev",
         "--image",
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME",
         "--region",

@@ -22,4 +22,5 @@ steps:
       - 'FINE_TUNE_FLAG=$_FINE_TUNE_FLAG'
       - 'EPOCHS=$_EPOCHS'
       - 'MODEL_NAME=$_MODEL_NAME'
+      - 'TAG_NAME=$TAG_NAME'
       
