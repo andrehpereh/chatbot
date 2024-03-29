@@ -24,11 +24,9 @@ steps:
     - '--gen2' 
     - '--region=us-central1' 
     - '--runtime=python39'
-    - '--source=./components/cloud_functions/' 
+    - '--source=./components/cloud_functions/'
     - '--entry-point=trigger_pipeline_cloud_function' 
     - '--trigger-topic=your-pipeline-trigger-topic' 
     - '--memory=2GiB'
-  env:
-  - 'TAG_NAME=$_PROD_TAG'
   id: 'WS_B'
   waitFor: ['-']
