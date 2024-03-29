@@ -128,7 +128,7 @@
       "args": [
         "run",
         "deploy",
-        "chattingbot_dev",
+        "chattingbotdev",
         "--image",
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME",
         "--region",
