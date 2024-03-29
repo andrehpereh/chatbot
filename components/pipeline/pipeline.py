@@ -133,12 +133,12 @@ def fine_tune_pipeline(
     whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
 
     trainer = fine_tunning(dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag, epochs=epochs, model_name=model_name)
-    trainer.set_memory_limit("70G").set_cpu_limit("13.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
+    trainer.set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     print("This is the dictionary", model_paths)
     converted = convert_checkpoints_op(
         keras_gcs_model=trainer.output, model_paths=model_paths
-    ).set_memory_limit("70G").set_cpu_limit("13.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
+    ).set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     import_unmanaged_model_task = importer_node.importer(
         artifact_uri=converted.output,
@@ -159,7 +159,6 @@ def fine_tune_pipeline(
         project=project,
         display_name="model_deployment_pipeline: End Point Created",
     )
-
     ModelDeployOp(
         endpoint=endpoint_create_op.outputs["endpoint"],
         model=model_upload_op.outputs["model"],

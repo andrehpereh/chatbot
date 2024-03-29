@@ -59,13 +59,18 @@ def get_model_paths_and_config(model_name):
         "2b": {
             "machine_type": "g2-standard-8",
             "accelerator_type": "NVIDIA_L4",
-            "accelerator_count": 1
+            "accelerator_count": 1,
+            "memory": "40G",
+            "cpu": "12.0"
         },
         "7b": {
             "machine_type": "g2-standard-12",
             "accelerator_type": "NVIDIA_L4",
-            "accelerator_count": 1
+            "accelerator_count": 1,
+            "memory": "70G",
+            "cpu": "16.0"
         }
+        
     }[model_size]  # Efficient lookup
 
     return {
