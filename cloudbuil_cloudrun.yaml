@@ -18,7 +18,7 @@ steps:
     - '--memory=2048MB'
    env: 
      - 'PROD_TAG=$_PROD_TAG'
-    id: 'WS_A'
+    id: 'WS_B'
     waitFor: ['-']
 
 
