@@ -1,6 +1,6 @@
 import os
 from kfp import dsl
-TAG_NAME = os.environ.get('PROD_TAG', 'master_v1') 
+PROD_TAG = os.environ.get('PROD_TAG', 'master_v1') 
 
 @dsl.container_component
 def triger_pipeline_component():
