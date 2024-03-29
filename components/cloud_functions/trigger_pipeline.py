@@ -1,11 +1,11 @@
 import os
 from kfp import dsl
-
+TAG_NAME = os.environ.get('PROD_TAG', 'master_v1') 
 
 @dsl.container_component
 def triger_pipeline_component():
     return dsl.ContainerSpec(
-      image="gcr.io/able-analyst-416817/gemma-chatbot-pipeline-app:master",
+      image=f"gcr.io/able-analyst-416817/gemma-chatbot-pipeline-app:{PROD_TAG}",
       args=['python', 'pipeline.py']
     )
 

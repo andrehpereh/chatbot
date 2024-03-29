@@ -1,7 +1,8 @@
 steps:
 - name: 'gcr.io/cloud-builders/gcloud'
-  args: ['run', 'deploy', 'chattingbot', '--image', 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME', '--region', '$LOCATION', '--platform', 'managed', '--allow-unauthenticated', '--port', '5000']
-
+  args: ['run', 'deploy', 'chattingbot', '--image', 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$_PROD_TAG', '--region', '$LOCATION', '--platform', 'managed', '--allow-unauthenticated', '--port', '5000']
+    id: 'WS_A'
+    waitFor: ['-']
 # Deploy the Cloud Function with corrections
 - name: 'gcr.io/cloud-builders/gcloud'
   args: 
@@ -15,5 +16,9 @@ steps:
     - '--entry-point=trigger_pipeline_cloud_function' 
     - '--trigger-topic=your-pipeline-trigger-topic' 
     - '--memory=2048MB'
+   env: 
+     - 'PROD_TAG=$_PROD_TAG'
+    id: 'WS_A'
+    waitFor: ['-']
 
 
