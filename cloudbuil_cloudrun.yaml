@@ -27,7 +27,7 @@ steps:
     - '--source=./components/cloud_functions/' 
     - '--entry-point=trigger_pipeline_cloud_function' 
     - '--trigger-topic=your-pipeline-trigger-topic' 
-    - '--memory=2048MB'
+    - '--memory=2GiB'
   env:
   - 'PROD_TAG=$_PROD_TAG'
   id: 'WS_B'
