@@ -5,7 +5,7 @@ from kfp import dsl
 @dsl.container_component
 def triger_pipeline_component():
     return dsl.ContainerSpec(
-      image="gcr.io/able-analyst-416817/gemma-chatbot-pipeline-app:latest",
+      image="gcr.io/able-analyst-416817/gemma-chatbot-pipeline-app:master",
       args=['python', 'pipeline.py']
     )
 
