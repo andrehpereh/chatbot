@@ -7,12 +7,16 @@ steps:
       - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME'
       - '.'
     dir: './components/pipeline'
+    id: 'P_A'
+    waitFor: ['-']
 
   # Push the image to Container Registry (unchanged, assuming this works) 
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME'
+    id: 'P_B'
+    waitFor: ['P_A']
 
   - name: 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME'
     dir: './components/pipeline'
@@ -23,4 +27,5 @@ steps:
       - 'EPOCHS=$_EPOCHS'
       - 'MODEL_NAME=$_MODEL_NAME'
       - 'TAG_NAME=$TAG_NAME'
-      
+    id: 'P_C'
+    waitFor: ['P_B']  
