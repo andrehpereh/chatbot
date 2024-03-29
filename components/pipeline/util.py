@@ -42,6 +42,7 @@ def get_model_paths_and_config(model_name):
 
     # When runnning local "./"
     finetuned_model_dir = f"./{model_name}"
+    bucket_name = Config.BUCKET_NAME
     bucket_uri = f"gs://{Config.BUCKET_NAME}"
     #finetuned_model_dir = f"{Config.BUCKET_URI}/{model_name}_raw/{model_name}"
     
@@ -75,6 +76,7 @@ def get_model_paths_and_config(model_name):
 
     return {
         "model_size": model_size,
+        "bucket_name": bucket_name,
         "finetuned_model_dir": finetuned_model_dir,
         "finetuned_weights_path": finetuned_weights_path,
         "finetuned_vocab_path": finetuned_vocab_path,

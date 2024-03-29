@@ -29,7 +29,8 @@ def fine_tunning(
   model_paths: dict,
   fine_tune_flag: bool,
   epochs: int,
-  model_name: str
+  model_name: str,
+  bucket_name: str
 ) -> str:
     import trainer
     import json
@@ -42,7 +43,6 @@ def fine_tunning(
     
     model = trainer.finetune_gemma(dataset, model_paths, fine_tune_flag, epochs=epochs, model_name=model_name)
     print("Its gonna save it here", finetuned_weights_path)
-    bucket_name = 'able-analyst-416817-chatbot-v1' # move to parameter.
     util.upload2bs(
         local_directory = model_paths['finetuned_model_dir'], bucket_name = bucket_name,
         destination_subfolder = model_paths['fine_tuned_keras_blob']
@@ -57,12 +57,13 @@ def fine_tunning(
 )
 def convert_checkpoints_op(
   keras_gcs_model: str,
-  model_paths: dict
+  model_paths: dict,
+  bucket_name: str
 ) -> str:
     import conversion_function
     import os
     import util
-    bucket_name, blob_name = os.path.dirname(keras_gcs_model).lstrip("gs://").split("/", 1) 
+    # bucket_name, blob_name = os.path.dirname(keras_gcs_model).lstrip("gs://").split("/", 1) 
     print("This is the keras passed", keras_gcs_model)
     util.download_all_from_blob(bucket_name, model_paths['fine_tuned_keras_blob'], local_destination=model_paths['finetuned_model_dir'])
     if os.path.exists("./model.weights.h5"):
@@ -132,12 +133,12 @@ def fine_tune_pipeline(
 
     whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
 
-    trainer = fine_tunning(dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag, epochs=epochs, model_name=model_name)
+    trainer = fine_tunning(dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag, epochs=epochs, model_name=model_name, bucket_name = bucket_name)
     trainer.set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     print("This is the dictionary", model_paths)
     converted = convert_checkpoints_op(
-        keras_gcs_model=trainer.output, model_paths=model_paths
+        keras_gcs_model=trainer.output, model_paths=model_paths, bucket_name = bucket_name
     ).set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     import_unmanaged_model_task = importer_node.importer(
