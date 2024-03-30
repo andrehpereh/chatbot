@@ -34,9 +34,11 @@ gcloud builds triggers create github \
     --build-config="cloudbuild.yaml" 
 
 
-
 find . -type f \( -not -path '*/\.ipynb_checkpoints/*' -and -not -path '*/\__pycache__/*' \) -exec git add {} +
 
+
+This is the github token
+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
 
 
 
