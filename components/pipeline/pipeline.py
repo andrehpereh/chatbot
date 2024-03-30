@@ -166,7 +166,7 @@ def fine_tune_pipeline(
     ModelDeployOp(
         endpoint=endpoint_create_op.outputs["endpoint"],
         model=model_upload_op.outputs["model"],
-        deployed_model_display_name=f"Model {ModelDeployOp}_{model_paths['model_name_vllm']}",
+        deployed_model_display_name=f"Model {Config.USER_NAME}_{model_paths['model_name_vllm']}",
         dedicated_resources_machine_type=model_paths['machine_type'],
         dedicated_resources_min_replica_count=1,
         dedicated_resources_max_replica_count=1,
