@@ -133,7 +133,10 @@ def fine_tune_pipeline(
 
     whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
 
-    trainer = fine_tunning(dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag, epochs=epochs, model_name=model_name, bucket_name = bucket_name)
+    trainer = fine_tunning(
+        dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag,
+        epochs=epochs, model_name=model_name, bucket_name = bucket_name
+    )
     trainer.set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
     print("This is the dictionary", model_paths)
@@ -151,19 +154,19 @@ def fine_tune_pipeline(
 
     model_upload_op = ModelUploadOp(
         project=project,
-        display_name="Mini Andres, first version automated",
+        display_name=f"Mini {Config.USER_NAME} model; first version automated",
         unmanaged_container_model=import_unmanaged_model_task.outputs["artifact"],
     )
     model_upload_op.after(import_unmanaged_model_task)
 
     endpoint_create_op = EndpointCreateOp(
         project=project,
-        display_name="model_deployment_pipeline: End Point Created",
+        display_name=f"End point created for {Config.USER_NAME}: End Point Created",
     )
     ModelDeployOp(
         endpoint=endpoint_create_op.outputs["endpoint"],
         model=model_upload_op.outputs["model"],
-        deployed_model_display_name=model_paths['model_name_vllm'],
+        deployed_model_display_name=f"Model {ModelDeployOp}_{model_paths['model_name_vllm']}",
         dedicated_resources_machine_type=model_paths['machine_type'],
         dedicated_resources_min_replica_count=1,
         dedicated_resources_max_replica_count=1,

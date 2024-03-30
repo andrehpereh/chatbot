@@ -14,7 +14,7 @@ def trigger_pipeline_cloud_function(cloud_event):
         parameters = base64.b64decode(cloud_event.data["message"]["data"])
         parameters = json.loads(parameters.decode('utf-8'))
         print("Parameters fine tunning personalized bot:", parameters)
-        prod_branch = 'masterv2'
+        prod_branch = 'masterv3'
         print("This is the production pipeline branch; should not be hardcoded.")
         os.environ['TAG_NAME'] = prod_branch
         os.environ['USER_NAME'] = parameters['user_name']
