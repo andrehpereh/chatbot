@@ -1,13 +1,59 @@
 from kfp import dsl
 import kfp as kfp
-from kfp.dsl import OutputPath, Artifact, InputPath
+from kfp.dsl import OutputPath, Artifact, InputPath, PipelineTaskFinalStatus, ExitHandler
+from kfp import compiler
 from config import Config
 from util import get_model_paths_and_config
+from google.cloud import aiplatform as vertexai
 import os
+
 TAG_NAME = os.environ.get('TAG_NAME', 'latest') 
+@dsl.component(base_image='python:3.9')
+def send_pipeline_completion_email_op(
+    status: PipelineTaskFinalStatus,
+    smtp_server: str = 'smtp.gmail.com',
+    smtp_port: int = 587,
+    sender_email: str = 'andrehpereh96@gmail.com',
+    recipient_emails: str = "andrehpereh@gmail.com",
+    email_password: str = "ssuy rubm kzge juid"
+):
+    import smtplib
+    from email.mime.text import MIMEText
+    recipient_emails = [recipient_emails]
+    """
+    Monitors for a success flag file and sends an email upon detection.
+
+    Args:
+        smtp_server (str): SMTP server address. Defaults to 'smtp.gmail.com'.
+        smtp_port (int): SMTP server port. Defaults to 587.
+        sender_email (str): Email address of the sender. Defaults to 'your_email@gmail.com'.
+        recipient_emails (list): List of recipient email addresses. Defaults to ['recipient@example.com'].
+        email_password (str): Password for the sender's email account.
+        success_flag_path (str): Path to the success flag file. Defaults to '/tmp/pipeline_success_flag.txt'.
+    """
+
+    msg = MIMEText(
+        f"Kubeflow Pipeline Completion Status; {status.state} and Job resource name:{status.pipeline_job_resource_name},\
+        \nPipeline task name: {status.pipeline_task_name} Errormessage: , {status.error_message}"
+    )
+    msg['Subject'] = 'Kubeflow Pipeline Completion'
+    msg['From'] = sender_email
+    msg['To'] = ', '.join(recipient_emails)
+
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()  # Enable TLS encryption
+        print("This is the email", sender_email)
+        print("This is the password", email_password)
+        server.login(sender_email, email_password)
+        server.sendmail(sender_email, recipient_emails, msg.as_string())
+
+    print('Email sent!')
+
+
+
 
 @dsl.component(
-  base_image =f"gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:{TAG_NAME}"
+    base_image =f"gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:{TAG_NAME}"
 )
 def process_whatsapp_chat_op(
   bucket_name: str,
@@ -22,7 +68,7 @@ def process_whatsapp_chat_op(
 
 
 @dsl.component(
-  base_image = f"gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:{TAG_NAME}"
+    base_image = f"gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:{TAG_NAME}"
 )
 def fine_tunning(
   dataset_path: InputPath('Dataset'),
@@ -53,7 +99,7 @@ def fine_tunning(
     
 
 @dsl.component(
-  base_image = f"gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:{TAG_NAME}"
+    base_image = f"gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:{TAG_NAME}"
 )
 def convert_checkpoints_op(
   keras_gcs_model: str,
@@ -63,7 +109,6 @@ def convert_checkpoints_op(
     import conversion_function
     import os
     import util
-    # bucket_name, blob_name = os.path.dirname(keras_gcs_model).lstrip("gs://").split("/", 1) 
     print("This is the keras passed", keras_gcs_model)
     util.download_all_from_blob(bucket_name, model_paths['fine_tuned_keras_blob'], local_destination=model_paths['finetuned_model_dir'])
     if os.path.exists("./model.weights.h5"):
@@ -94,13 +139,13 @@ def fine_tune_pipeline(
     model_name: str = 'gemma_2b_en'
 ):
 
-    from config import Config
     from google_cloud_pipeline_components.types import artifact_types
     from google_cloud_pipeline_components.v1.endpoint import (EndpointCreateOp, ModelDeployOp)
     from google_cloud_pipeline_components.v1.model import ModelUploadOp
     from kfp.dsl import importer_node
     from util import get_model_paths_and_config
-    print("This is the model name", Config.MODEL_NAME)
+    from config import Config
+
     model_paths = get_model_paths_and_config(Config.MODEL_NAME)
 
     port = 7080
@@ -130,63 +175,62 @@ def fine_tune_pipeline(
       "predictRoute": "/generate",
       "healthRoute": "/ping"
     }
+    send_email = send_pipeline_completion_email_op(recipient_emails = f'{Config.USER_NAME}@gmail.com')
+    with ExitHandler(send_email):
+        whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
 
-    whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
+        trainer = fine_tunning(
+            dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag,
+            epochs=epochs, model_name=model_name, bucket_name = bucket_name
+        )
+        trainer.set_memory_limit("50G").set_cpu_limit("12.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
-    trainer = fine_tunning(
-        dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag,
-        epochs=epochs, model_name=model_name, bucket_name = bucket_name
-    )
-    trainer.set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
+        print("This is the dictionary", model_paths)
+        converted = convert_checkpoints_op(
+            keras_gcs_model=trainer.output, model_paths=model_paths, bucket_name = bucket_name
+        ).set_memory_limit("50G").set_cpu_limit("12.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
-    print("This is the dictionary", model_paths)
-    converted = convert_checkpoints_op(
-        keras_gcs_model=trainer.output, model_paths=model_paths, bucket_name = bucket_name
-    ).set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
+        import_unmanaged_model_task = importer_node.importer(
+            artifact_uri=converted.output,
+            artifact_class=artifact_types.UnmanagedContainerModel,
+            metadata={
+                "containerSpec": metadata,
+            },
+        )
 
-    import_unmanaged_model_task = importer_node.importer(
-        artifact_uri=converted.output,
-        artifact_class=artifact_types.UnmanagedContainerModel,
-        metadata={
-            "containerSpec": metadata,
-        },
-    )
+        model_upload_op = ModelUploadOp(
+            project=project,
+            display_name=f"Mini {Config.USER_NAME} model; first version automated",
+            unmanaged_container_model=import_unmanaged_model_task.outputs["artifact"],
+        )
+        model_upload_op.after(import_unmanaged_model_task)
 
-    model_upload_op = ModelUploadOp(
-        project=project,
-        display_name=f"Mini {Config.USER_NAME} model; first version automated",
-        unmanaged_container_model=import_unmanaged_model_task.outputs["artifact"],
-    )
-    model_upload_op.after(import_unmanaged_model_task)
+        endpoint_create_op = EndpointCreateOp(
+            project=project,
+            display_name=f"End point created for {Config.USER_NAME}: End Point Created",
+        )
 
-    endpoint_create_op = EndpointCreateOp(
-        project=project,
-        display_name=f"End point created for {Config.USER_NAME}: End Point Created",
-    )
-    ModelDeployOp(
-        endpoint=endpoint_create_op.outputs["endpoint"],
-        model=model_upload_op.outputs["model"],
-        deployed_model_display_name=f"Model {Config.USER_NAME}_{model_paths['model_name_vllm']}",
-        dedicated_resources_machine_type=model_paths['machine_type'],
-        dedicated_resources_min_replica_count=1,
-        dedicated_resources_max_replica_count=1,
-        dedicated_resources_accelerator_type=model_paths['accelerator_type'],
-        dedicated_resources_accelerator_count=model_paths['accelerator_count']
-    )
+        ModelDeployOp(
+            endpoint=endpoint_create_op.outputs["endpoint"],
+            model=model_upload_op.outputs["model"],
+            deployed_model_display_name=f"Model {Config.USER_NAME}_{model_paths['model_name_vllm']}",
+            dedicated_resources_machine_type=model_paths['machine_type'],
+            dedicated_resources_min_replica_count=1,
+            dedicated_resources_max_replica_count=1,
+            dedicated_resources_accelerator_type=model_paths['accelerator_type'],
+            dedicated_resources_accelerator_count=model_paths['accelerator_count']
+        )
 
 
 if __name__ == '__main__':
     from kfp import compiler
     from google.cloud import aiplatform as vertexai
     from config import Config
-    # from util import get_model_paths_and_config
     print("This is the model name", Config.MODEL_NAME, "Ahuevito")
     print("This is the directory", Config.TRAIN_DATA_DIR, "Ahuevito")
     print("This is the BUCKET_NAME", Config.BUCKET_NAME, "Ahuevito")
     print("This is the FINE_TUNE_FLAG", Config.FINE_TUNE_FLAG, "Ahuevito")
     print("This is the EPOCHS", Config.EPOCHS, "Ahuevito")
-
-    # model_paths = get_model_paths_and_config(Config.MODEL_NAME)
     pipeline_name = f"fine_tune_pipeline{Config.USER_NAME}.json"
     compiler.Compiler().compile(
         pipeline_func=fine_tune_pipeline, package_path=pipeline_name
