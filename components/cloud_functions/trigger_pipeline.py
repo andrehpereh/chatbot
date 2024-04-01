@@ -1,6 +1,6 @@
 import os
 from kfp import dsl
-TAG_NAME = os.environ.get('TAG_NAME', 'masterv4') 
+TAG_NAME = os.environ.get('TAG_NAME', 'master_v1') 
 print("This is the PROD_TAG", TAG_NAME)
 IMAGE = f"gcr.io/{os.environ.get('PROJECT_ID')}/gemma-chatbot-pipeline-app:{TAG_NAME}"
 
