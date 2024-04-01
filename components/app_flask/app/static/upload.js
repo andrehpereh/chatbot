@@ -1,5 +1,5 @@
 const fileInput = document.getElementById('fileInput');
-const textInput = document.getElementById('textInput');
+const codeVersion = document.getElementById('codeVersion');
 const uploadButton = document.getElementById('uploadButton');
 const preview = document.getElementById('preview');
 const modelSelect = document.getElementById('model_name');
@@ -8,7 +8,7 @@ const epochsSelect = document.getElementById('epochs');
 
 uploadButton.addEventListener('click', () => {
     const files = fileInput.files;
-    const text = textInput.value;
+    const code_version = codeVersion.value;
     const model_name = modelSelect.value;
     const epochs = epochsSelect.value;
 
@@ -23,7 +23,7 @@ uploadButton.addEventListener('click', () => {
     for (let i = 0; i < files.length; i++) {
         formData.append('files', files[i]);
     }
-    formData.append('text', text);
+    formData.append('code_version', code_version);
     formData.append('model_name', model_name);
     formData.append('epochs', epochs);
     console.log("Hasta aqui jala bien");

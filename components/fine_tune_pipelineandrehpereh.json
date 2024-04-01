@@ -1,0 +1,434 @@
+{
+  "components": {
+    "comp-endpoint-create": {
+      "executorLabel": "exec-endpoint-create",
+      "inputDefinitions": {
+        "parameters": {
+          "description": {
+            "defaultValue": "",
+            "description": "The description of the Endpoint.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "display_name": {
+            "description": "The user-defined name of the Endpoint. The name can be up to 128 characters long and can be consist of any UTF-8 characters.",
+            "parameterType": "STRING"
+          },
+          "encryption_spec_key_name": {
+            "defaultValue": "",
+            "description": "Customer-managed encryption key spec for an Endpoint. If set, this Endpoint and all of this Endoint's sub-resources will be secured by this key. Has the form: `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`. The key needs to be in the same region as where the compute resource is created.  If set, this Endpoint and all sub-resources of this Endpoint will be secured by this key.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "labels": {
+            "defaultValue": {},
+            "description": "The labels with user-defined metadata to organize your Endpoints.  Label keys and values can be no longer than 64 characters (Unicode codepoints), can only contain lowercase letters, numeric characters, underscores and dashes. International characters are allowed.  See https://goo.gl/xmQnxf for more information and examples of labels.",
+            "isOptional": true,
+            "parameterType": "STRUCT"
+          },
+          "location": {
+            "defaultValue": "us-central1",
+            "description": "Location to create the Endpoint. If not set, default to us-central1.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "network": {
+            "defaultValue": "",
+            "description": "The full name of the Google Compute Engine network to which the Endpoint should be peered. Private services access must already be configured for the network. If left unspecified, the Endpoint is not peered with any network. [Format](https://cloud.google.com/compute/docs/reference/rest/v1/networks/insert): `projects/{project}/global/networks/{network}`. Where `{project}` is a project number, as in `'12345'`, and `{network}` is network name.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project": {
+            "defaultValue": "{{$.pipeline_google_cloud_project_id}}",
+            "description": "Project to create the Endpoint. Defaults to the project in which the PipelineJob is run.",
+            "isOptional": true,
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "endpoint": {
+            "artifactType": {
+              "schemaTitle": "google.VertexEndpoint",
+              "schemaVersion": "0.0.1"
+            },
+            "description": "Artifact tracking the created Endpoint."
+          }
+        },
+        "parameters": {
+          "gcp_resources": {
+            "description": "Serialized JSON of `gcp_resources` [proto](https://github.com/kubeflow/pipelines/tree/master/components/google-cloud/google_cloud_pipeline_components/proto) which tracks the create Endpoint's long-running operation.",
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-exit-handler-1": {
+      "dag": {
+        "tasks": {
+          "endpoint-create": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-endpoint-create"
+            },
+            "inputs": {
+              "parameters": {
+                "display_name": {
+                  "runtimeValue": {
+                    "constant": "End point created for andrehpereh: End Point Created"
+                  }
+                },
+                "project": {
+                  "componentInputParameter": "pipelinechannel--project"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "endpoint-create"
+            }
+          },
+          "process-whatsapp-chat-op": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-process-whatsapp-chat-op"
+            },
+            "inputs": {
+              "parameters": {
+                "bucket_name": {
+                  "componentInputParameter": "pipelinechannel--bucket_name"
+                },
+                "directory": {
+                  "componentInputParameter": "pipelinechannel--directory"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "process-whatsapp-chat-op"
+            }
+          },
+          "update-user-endpoint": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-update-user-endpoint"
+            },
+            "dependentTasks": [
+              "endpoint-create"
+            ],
+            "inputs": {
+              "parameters": {
+                "email": {
+                  "runtimeValue": {
+                    "constant": "andrehpereh@gmail.com"
+                  }
+                },
+                "endpoint_resource": {
+                  "taskOutputParameter": {
+                    "outputParameterKey": "gcp_resources",
+                    "producerTask": "endpoint-create"
+                  }
+                },
+                "project": {
+                  "componentInputParameter": "pipelinechannel--project"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "update-user-endpoint"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "parameters": {
+          "pipelinechannel--bucket_name": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--directory": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--project": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-process-whatsapp-chat-op": {
+      "executorLabel": "exec-process-whatsapp-chat-op",
+      "inputDefinitions": {
+        "parameters": {
+          "bucket_name": {
+            "parameterType": "STRING"
+          },
+          "directory": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "artifacts": {
+          "dataset_path": {
+            "artifactType": {
+              "schemaTitle": "system.Dataset",
+              "schemaVersion": "0.0.1"
+            }
+          }
+        }
+      }
+    },
+    "comp-send-pipeline-completion-email-op": {
+      "executorLabel": "exec-send-pipeline-completion-email-op",
+      "inputDefinitions": {
+        "parameters": {
+          "email_password": {
+            "defaultValue": "ssuy rubm kzge juid",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project": {
+            "parameterType": "STRING"
+          },
+          "recipient_emails": {
+            "defaultValue": "andrehpereh@gmail.com",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "sender_email": {
+            "defaultValue": "andrehpereh96@gmail.com",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "smtp_port": {
+            "defaultValue": 587.0,
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "smtp_server": {
+            "defaultValue": "smtp.gmail.com",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "status": {
+            "isOptional": true,
+            "parameterType": "TASK_FINAL_STATUS"
+          }
+        }
+      }
+    },
+    "comp-update-user-endpoint": {
+      "executorLabel": "exec-update-user-endpoint",
+      "inputDefinitions": {
+        "parameters": {
+          "email": {
+            "parameterType": "STRING"
+          },
+          "endpoint_resource": {
+            "parameterType": "STRING"
+          },
+          "project": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-endpoint-create": {
+        "container": {
+          "args": [
+            "--type",
+            "CreateEndpoint",
+            "--payload",
+            "{\"Concat\": [\"{\", \"\\\"display_name\\\": \\\"\", \"{{$.inputs.parameters['display_name']}}\", \"\\\"\", \", \\\"description\\\": \\\"\", \"{{$.inputs.parameters['description']}}\", \"\\\"\", \", \\\"labels\\\": \", \"{{$.inputs.parameters['labels']}}\", \", \\\"encryption_spec\\\": {\\\"kms_key_name\\\":\\\"\", \"{{$.inputs.parameters['encryption_spec_key_name']}}\", \"\\\"}\", \", \\\"network\\\": \\\"\", \"{{$.inputs.parameters['network']}}\", \"\\\"\", \"}\"]}",
+            "--project",
+            "{{$.inputs.parameters['project']}}",
+            "--location",
+            "{{$.inputs.parameters['location']}}",
+            "--gcp_resources",
+            "{{$.outputs.parameters['gcp_resources'].output_file}}",
+            "--executor_input",
+            "{{$}}"
+          ],
+          "command": [
+            "python3",
+            "-u",
+            "-m",
+            "google_cloud_pipeline_components.container.v1.endpoint.create_endpoint.launcher"
+          ],
+          "image": "gcr.io/ml-pipeline/google-cloud-pipeline-components:2.12.0"
+        }
+      },
+      "exec-process-whatsapp-chat-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "process_whatsapp_chat_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef process_whatsapp_chat_op(\n  bucket_name: str,\n  directory: str,\n  dataset_path: OutputPath('Dataset')\n):\n    import data_ingestion\n    import json\n    formatted_messages = data_ingestion.process_whatsapp_chat(bucket_name, directory)\n    with open(dataset_path, 'w') as f:\n        json.dump(formatted_messages, f)\n\n"
+          ],
+          "image": "gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:latest"
+        }
+      },
+      "exec-send-pipeline-completion-email-op": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "send_pipeline_completion_email_op"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-bigquery' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef send_pipeline_completion_email_op(\n    project: str,\n    status: PipelineTaskFinalStatus,\n    smtp_server: str = 'smtp.gmail.com',\n    smtp_port: int = 587,\n    sender_email: str = 'andrehpereh96@gmail.com',\n    recipient_emails: str = \"andrehpereh@gmail.com\",\n    email_password: str = \"ssuy rubm kzge juid\"\n):\n    import smtplib\n    from email.mime.text import MIMEText\n    from google.cloud import bigquery\n    recipient_emails = [recipient_emails]\n\n    DATASET_ID = 'chatbot' # This should be moved to a config file\n    USER_TRAINING_STATUS = 'user_training_status' # This should be moved to a config file\n    \"\"\"\n    Monitors for a success flag file and sends an email upon detection.\n\n    Args:\n        smtp_server (str): SMTP server address. Defaults to 'smtp.gmail.com'.\n        smtp_port (int): SMTP server port. Defaults to 587.\n        sender_email (str): Email address of the sender. Defaults to 'your_email@gmail.com'.\n        recipient_emails (list): List of recipient email addresses. Defaults to ['recipient@example.com'].\n        email_password (str): Password for the sender's email account.\n        success_flag_path (str): Path to the success flag file. Defaults to '/tmp/pipeline_success_flag.txt'.\n    \"\"\"\n\n    msg = MIMEText(\n        f\"Kubeflow Pipeline Completion Status; {status.state} and Job resource name:{status.pipeline_job_resource_name},\\\n        \\nPipeline task name: {status.pipeline_task_name} Errormessage: , {status.error_message}\"\n    )\n    msg['Subject'] = 'Kubeflow Pipeline Completion'\n    msg['From'] = sender_email\n    msg['To'] = ', '.join(recipient_emails)\n\n    with smtplib.SMTP(smtp_server, smtp_port) as server:\n        server.starttls()  # Enable TLS encryption\n        print(\"This is the email\", sender_email)\n        print(\"This is the password\", email_password)\n        server.login(sender_email, email_password)\n        server.sendmail(sender_email, recipient_emails, msg.as_string())\n    if status.state == \"SUCCEEDED\":\n        client = bigquery.Client(project)\n        print(\"This is the client\", client)\n        table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)\n        table = client.get_table(table_ref)\n        row_to_insert = {\n            'email': recipient_emails,\n            'training_status': 1\n        }\n        client.insert_rows(table, [row_to_insert]) \n        errors = client.insert_rows(table, [row_to_insert])\n        if errors:  # Check if there were errors\n            print(\"The model has been trained, but error updating training_status for {}: {}\".format(email_password, errors))\n        else:\n            print(\"User training has been updated\")\n\n    print('Email sent!')\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      },
+      "exec-update-user-endpoint": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "update_user_endpoint"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.7.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&  python3 -m pip install --quiet --no-warn-script-location 'google-cloud-bigquery' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef update_user_endpoint(\n    endpoint_resource: str,\n    email: str,\n    project: str\n):\n\n    import os\n    from google.cloud import bigquery\n    DATASET_ID = 'chatbot' # This should be moved to a config file\n    USER_TRAINING_STATUS = 'user_training_status' # This should be moved to a config file\n    #This part can be wrapped in a function\n    import json\n    data = json.loads(endpoint_resource)\n    resource_uri = data['resources'][0]['resourceUri']\n\n    print(\"This is the passed end pooint\", endpoint_resource)\n    print(dir(endpoint_resource))\n    print(type(endpoint_resource))\n    print(\"This is the project\", project)\n\n    client = bigquery.Client(project)\n    print(\"This is the client\", client)\n    table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)\n    table = client.get_table(table_ref)\n    row_to_insert = {\n        'email': email,\n        'end_point': resource_uri,\n        'training_status': True\n    }\n    client.insert_rows(table, [row_to_insert]) \n    errors = client.insert_rows(table, [row_to_insert])\n    if errors:  # Check if there were errors\n        print(\"The model has been trained, but error updating resource_uri for {}: {}\".format(email, errors))\n    else:\n        print(\"User training has been updated\")\n    print(\"End point has been stored.\")\n\n"
+          ],
+          "image": "python:3.9"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "model-deployment"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "exit-handler-1": {
+          "componentRef": {
+            "name": "comp-exit-handler-1"
+          },
+          "inputs": {
+            "parameters": {
+              "pipelinechannel--bucket_name": {
+                "componentInputParameter": "bucket_name"
+              },
+              "pipelinechannel--directory": {
+                "componentInputParameter": "directory"
+              },
+              "pipelinechannel--project": {
+                "componentInputParameter": "project"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "exit-handler-1"
+          }
+        },
+        "send-pipeline-completion-email-op": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-send-pipeline-completion-email-op"
+          },
+          "dependentTasks": [
+            "exit-handler-1"
+          ],
+          "inputs": {
+            "parameters": {
+              "project": {
+                "componentInputParameter": "project"
+              },
+              "recipient_emails": {
+                "runtimeValue": {
+                  "constant": "andrehpereh@gmail.com"
+                }
+              },
+              "status": {
+                "taskFinalStatus": {
+                  "producerTask": "exit-handler-1"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "send-pipeline-completion-email-op"
+          },
+          "triggerPolicy": {
+            "strategy": "ALL_UPSTREAM_TASKS_COMPLETED"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "bucket_name": {
+          "defaultValue": "able-analyst-416817-chatbot-v1",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "directory": {
+          "defaultValue": "input_data/andrehpereh",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "epochs": {
+          "defaultValue": 3.0,
+          "isOptional": true,
+          "parameterType": "NUMBER_INTEGER"
+        },
+        "fine_tune_flag": {
+          "defaultValue": false,
+          "isOptional": true,
+          "parameterType": "BOOLEAN"
+        },
+        "model_name": {
+          "defaultValue": "gemma_2b_en",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "project": {
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "serving_image": {
+          "defaultValue": "us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01",
+          "isOptional": true,
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.7.0"
+}

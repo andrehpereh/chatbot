@@ -3,13 +3,14 @@ import kfp as kfp
 from kfp.dsl import OutputPath, Artifact, InputPath, PipelineTaskFinalStatus, ExitHandler
 from kfp import compiler
 from config import Config
-from util import get_model_paths_and_config
 from google.cloud import aiplatform as vertexai
 import os
 
 TAG_NAME = os.environ.get('TAG_NAME', 'latest') 
-@dsl.component(base_image='python:3.9')
+
+@dsl.component(base_image='python:3.9', packages_to_install=['google-cloud-bigquery'])
 def send_pipeline_completion_email_op(
+    project: str,
     status: PipelineTaskFinalStatus,
     smtp_server: str = 'smtp.gmail.com',
     smtp_port: int = 587,
@@ -19,7 +20,11 @@ def send_pipeline_completion_email_op(
 ):
     import smtplib
     from email.mime.text import MIMEText
+    from google.cloud import bigquery
     recipient_emails = [recipient_emails]
+    
+    DATASET_ID = 'chatbot' # This should be moved to a config file
+    USER_TRAINING_STATUS = 'user_training_status' # This should be moved to a config file
     """
     Monitors for a success flag file and sends an email upon detection.
 
@@ -46,6 +51,21 @@ def send_pipeline_completion_email_op(
         print("This is the password", email_password)
         server.login(sender_email, email_password)
         server.sendmail(sender_email, recipient_emails, msg.as_string())
+    if status.state == "SUCCEEDED":
+        client = bigquery.Client(project)
+        print("This is the client", client)
+        table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
+        table = client.get_table(table_ref)
+        row_to_insert = {
+            'email': recipient_emails,
+            'training_status': 1
+        }
+        client.insert_rows(table, [row_to_insert]) 
+        errors = client.insert_rows(table, [row_to_insert])
+        if errors:  # Check if there were errors
+            print("The model has been trained, but error updating training_status for {}: {}".format(email_password, errors))
+        else:
+            print("User training has been updated")
 
     print('Email sent!')
 
@@ -53,7 +73,7 @@ def send_pipeline_completion_email_op(
 
 
 @dsl.component(
-    base_image =f"gcr.io/able-analyst-416817/gemma-chatbot-data-preparation:{TAG_NAME}"
+    base_image =f"gcr.io/{Config.PROJECT_ID}/gemma-chatbot-data-preparation:{TAG_NAME}"
 )
 def process_whatsapp_chat_op(
   bucket_name: str,
@@ -68,7 +88,7 @@ def process_whatsapp_chat_op(
 
 
 @dsl.component(
-    base_image = f"gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:{TAG_NAME}"
+    base_image = f"gcr.io/{Config.PROJECT_ID}/gemma-chatbot-fine-tunning:{TAG_NAME}"
 )
 def fine_tunning(
   dataset_path: InputPath('Dataset'),
@@ -99,7 +119,7 @@ def fine_tunning(
     
 
 @dsl.component(
-    base_image = f"gcr.io/able-analyst-416817/gemma-chatbot-fine-tunning:{TAG_NAME}"
+    base_image = f"gcr.io/{Config.PROJECT_ID}/gemma-chatbot-fine-tunning:{TAG_NAME}"
 )
 def convert_checkpoints_op(
   keras_gcs_model: str,
@@ -126,6 +146,46 @@ def convert_checkpoints_op(
         destination_subfolder = model_paths['deployed_model_blob']
     )
     return model_paths['deployed_model_uri']
+
+
+
+@dsl.component(base_image='python:3.9', packages_to_install=['google-cloud-bigquery'])
+def update_user_endpoint(
+    endpoint_resource: str,
+    email: str,
+    project: str
+):
+
+    import os
+    from google.cloud import bigquery
+    DATASET_ID = 'chatbot' # This should be moved to a config file
+    USER_TRAINING_STATUS = 'user_training_status' # This should be moved to a config file
+    #This part can be wrapped in a function
+    import json
+    data = json.loads(endpoint_resource)
+    resource_uri = data['resources'][0]['resourceUri']
+
+    print("This is the passed end pooint", endpoint_resource)
+    print(dir(endpoint_resource))
+    print(type(endpoint_resource))
+    print("This is the project", project)
+    
+    client = bigquery.Client(project)
+    print("This is the client", client)
+    table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
+    table = client.get_table(table_ref)
+    row_to_insert = {
+        'email': email,
+        'end_point': resource_uri,
+        'training_status': True
+    }
+    client.insert_rows(table, [row_to_insert]) 
+    errors = client.insert_rows(table, [row_to_insert])
+    if errors:  # Check if there were errors
+        print("The model has been trained, but error updating resource_uri for {}: {}".format(email, errors))
+    else:
+        print("User training has been updated")
+    print("End point has been stored.")
 
 
 @dsl.pipeline(name="Model deployment.")
@@ -175,7 +235,9 @@ def fine_tune_pipeline(
       "predictRoute": "/generate",
       "healthRoute": "/ping"
     }
-    send_email = send_pipeline_completion_email_op(recipient_emails = f'{Config.USER_NAME}@gmail.com')
+    # This should come from a dataset instead of hardcoding it.
+    email = f'{Config.USER_NAME}@gmail.com'
+    send_email = send_pipeline_completion_email_op(recipient_emails = email, project=project)
     with ExitHandler(send_email):
         whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
 
@@ -220,7 +282,8 @@ def fine_tune_pipeline(
             dedicated_resources_accelerator_type=model_paths['accelerator_type'],
             dedicated_resources_accelerator_count=model_paths['accelerator_count']
         )
-
+        print("This is the project", project)
+        update_user_endpoint(endpoint_resource=endpoint_create_op.outputs["gcp_resources"], email=email, project=project)
 
 if __name__ == '__main__':
     from kfp import compiler

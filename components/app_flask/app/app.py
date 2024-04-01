@@ -103,10 +103,12 @@ def signup():
         client = bigquery.Client(os.environ.get('PROJECT_ID'))
         table_ref = client.dataset(DATASET_ID).table(USERS_TABLE)
         table = client.get_table(table_ref)
-
-        # Insert data with error handling
-        row_to_insert = [(email, hashed_password.decode('utf-8'))]
-        errors = client.insert_rows(table, row_to_insert)
+        row_to_insert = {
+            'email': email, 
+            'password_hash': hashed_password.decode('utf-8')
+        }
+        client.insert_rows(table, [row_to_insert]) 
+        errors = client.insert_rows(table, [row_to_insert]) 
         if errors:  # Check if there were errors
             return 'Error submitting data: {}'.format(errors), 500
         else:
@@ -175,13 +177,13 @@ def handle_upload():
     email = session.get('email')
     print("This is the email, ahuevito", email)
     print(type(email))
-    text_data = request.form.get('text')
-    print(text_data)
+    code_version = request.form.get('code_version')
+    print("This is the code version", code_version)
     model_name = request.form.get('model_name')
     epochs = request.form.get('epochs')
     print(f"Selected model: {model_name}, Epochs: {epochs}")
     user_name = re.match(r'^([^@]+)', str(email)).group(1)
-    print("This is the text", text_data)
+    print("This is the code version", code_version)
 
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(os.environ.get('PROJECT_ID'), PUBSUB_TOPIC)
@@ -215,6 +217,7 @@ def handle_upload():
         "model_name": model_name,
         "epochs": epochs,
         "bucket_name": BUCKET_NAME,
+        "tag_version": code_version,
         "project_id": os.environ.get('PROJECT_ID')
         
     }
@@ -222,8 +225,23 @@ def handle_upload():
     message_data_bytes = message_data_json.encode('utf-8')
     print(message_data_bytes)
     publisher.publish(topic_path, message_data_bytes)
-
-    return "Upload Successful!", 200 
+    
+    client = bigquery.Client(os.environ.get('PROJECT_ID'))
+    table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
+    table = client.get_table(table_ref)
+    row_to_insert = {
+        'email': email,
+        'training_status': False
+    }
+    print("This is the rows to upload", row_to_insert)
+    client.insert_rows(table, [row_to_insert]) 
+    errors = client.insert_rows(table, [row_to_insert]) 
+    if errors:  # Check if there were errors
+        return 'Error submitting data: {}'.format(errors), 500
+    else:
+        print("Upload Successful!")
+        return "Upload Successful!", 200 
+     
 
 @app.route('/home')
 def home():
