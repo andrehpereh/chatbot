@@ -1,11 +1,76 @@
-.container {
-    width: 500px;
-    margin: 50px auto;
-    text-align: center;
-    border: 1px solid #ddd;
-    padding: 20px;
+/* Overall Styling */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #d9f2e6; /* Soft, light background */
+  margin: 0;
+  padding: 25px;
 }
 
-input[type="file"], input[type="text"] {
-    margin-bottom: 15px;
+.container {
+  width: 450px; /* Adjust width as needed */
+  margin: 50px auto;
+  padding: 30px;
+  background-color: #fff; /* White background */
+  border-radius: 8px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.container h1 {
+  color: #333;  /* Dark grey header */
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* Input Elements and Labels */
+label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+input[type="file"], 
+input[type="text"], 
+select {
+  width: 100%; 
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  box-sizing: border-box;
+} 
+
+/* Upload Button */
+#uploadButton {
+  background-color: #008cba; /* Blue button */
+  color: white;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;  
+  transition: background-color 0.3s; /* Smooth transition */
+  margin: 0 auto; /* Center the button within its container */
+  display: block; /* Treat the button like a block element */
+}
+
+#uploadButton:hover {
+background-color: #006ba1; /* Darker blue on hover */
+/* No specific centering needed - the existing 'margin: 0 auto' still applies */
+}
+
+/* Upload Notification */
+#upload-notification {
+  background-color: #d9f2e6; /* Light green */
+  color: #206a4f; /* Dark green text */
+  border: 1px solid #b7e4cf;
+  padding: 25px; /* Increased padding for more space */
+  border-radius: 8px; /* Slightly rounded corners */
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Precise centering */
+  text-align: center;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2); /* More prominent shadow */
+  width: 400px; /* Adjust the width as needed */
+  z-index: 1000; /* Ensure it's on top of other elements */
 }

@@ -34,9 +34,17 @@ uploadButton.addEventListener('click', () => {
     })
     .then(response => {
         if (response.ok) {
-            console.log('File uploaded successfully!');
+          console.log('File uploaded successfully!');
+          // *** Show the notification ***
+          const notification = document.getElementById('upload-notification');
+          notification.style.display = 'block'; // Show it
+          // Optionally hide after a few seconds
+          setTimeout(() => {
+            notification.style.display = 'none';
+              window.location.href = '/home';
+          }, 5000); // Hide after 3 seconds
         } else {
-            console.error('Upload failed:', response.statusText);
+          console.error('Upload failed:', response.statusText);
         }
     });
 });

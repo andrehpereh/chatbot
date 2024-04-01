@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from google.cloud import bigquery, storage, pubsub_v1
 from werkzeug.datastructures import FileStorage
+from util import extract_info_from_endpoint
 import bcrypt, os, base64, json
 
 app = Flask(__name__)
@@ -138,24 +139,37 @@ def login():
             print("This is each row", row)
             stored_password_hash = row.password_hash  # Assuming 'password' is the column name
         # Check if user already trained.
-        query = f"SELECT training_status FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USER_TRAINING_STATUS}` WHERE email = '{email}'"
+        query = f"""
+            SELECT training_status, end_point
+            FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USER_TRAINING_STATUS}`
+            WHERE email = '{email}'
+            ORDER BY created_at DESC
+            LIMIT 1
+        """
         print("This is el query...", query)
         results = client.query(query).result()
         print("This is the results", results, type(results))
         user_training_status = None
+        endpoint_uri = None
         for row in results:
             print("This is each row", row)
             user_training_status = row.training_status  # Assuming 'training_status' is the column name
-
+            endpoint_uri = row.end_point
         # Verify password
         if stored_password_hash and bcrypt.checkpw(password.encode('utf-8'), stored_password_hash.encode('utf-8')):
-            # Successful login
-            print("This is the email", email)
-            session['email'] = email 
+            session['email'] = email
             if user_training_status:
+                endpoint_details = extract_info_from_endpoint(endpoint_uri)
+                print("This is the email", email)
+                session['endpoint'] = endpoint_details["endpoints"]
+                session['location'] = endpoint_details["locations"]
+                session['project'] = endpoint_details["projects"]
+                print(f"This is the endpoint{session['endpoint']}, projects{session['project']}, locations{session['location']}")
+                print(user_training_status)
                 return redirect(url_for('chat_page'))
             else:
                 return redirect(url_for('upload'))
+            # Successful login
         else:
             # Invalid credentials
             return 'Invalid email or password', 401
@@ -224,7 +238,7 @@ def handle_upload():
     message_data_json = json.dumps(message_data)
     message_data_bytes = message_data_json.encode('utf-8')
     print(message_data_bytes)
-    publisher.publish(topic_path, message_data_bytes)
+    # publisher.publish(topic_path, message_data_bytes)
     
     client = bigquery.Client(os.environ.get('PROJECT_ID'))
     table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
@@ -250,17 +264,32 @@ def home():
 
 @app.route('/chat_page')
 def chat_page():
+    email = session.get('email')
+    if not email:  
+        # Redirect to login if not logged in
+        print("Nos regresamos al home")
+        return redirect(url_for('home'))
     return render_template('chat.html')
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
     user_message = request.json['message']
+    email = session.get('email')
+    if not email:  
+        # Redirect to login if not logged in
+        print("Nos regresamos al home")
+        return redirect(url_for('home'))
+
+    endpoint = session.get('endpoint')
+    project = session.get('project')
+    location = session.get('location')
+    print(f"This is the endpoint{endpoint}, projects{project}, locations{location}")
     # Placeholder chatbot code
     #response = predict_custom_trained_model_sample(
-     #   project="24796876098",
-      #  endpoint_id="7974742443096539136",
-       # location="us-central1",
-        #user_input= user_message,
+    #    project=project,
+    #    endpoint_id=endpoint,
+    #    location=location,
+    #    user_input= user_message,
     #)
     print(user_message)
     print("Esta es la respuesta")
