@@ -6,7 +6,7 @@ from config import Config
 from google.cloud import aiplatform as vertexai
 import os
 
-TAG_NAME = os.environ.get('TAG_NAME', 'latest') 
+TAG_NAME = os.environ.get('TAG_NAME', 'masterv6') 
 
 @dsl.component(base_image='python:3.9', packages_to_install=['google-cloud-bigquery'])
 def send_pipeline_completion_email_op(
@@ -75,14 +75,21 @@ def send_pipeline_completion_email_op(
 @dsl.component(
     base_image =f"gcr.io/{Config.PROJECT_ID}/gemma-chatbot-data-preparation:{TAG_NAME}"
 )
-def process_whatsapp_chat_op(
-  bucket_name: str,
-  directory: str,
-  dataset_path: OutputPath('Dataset')
+def data_preparation_op(
+    bucket_name: str,
+    directory: str,
+    dataset_path: OutputPath('Dataset'),
+    pair_count: int=4,
+    data_augmentation_iter: int=4
 ):
     import data_ingestion
     import json
-    formatted_messages = data_ingestion.process_whatsapp_chat(bucket_name, directory)
+    from vertexai.preview.generative_models import GenerativeModel
+    gemini_pro_model = GenerativeModel("gemini-1.0-pro")
+    formatted_messages = data_ingestion.data_preparation(
+        bucket_name=bucket_name, directory=directory, gemini_pro_model=gemini_pro_model,
+        pair_count=pair_count, data_augmentation_iter=data_augmentation_iter
+    )
     with open(dataset_path, 'w') as f:
         json.dump(formatted_messages, f)
 
@@ -196,7 +203,9 @@ def fine_tune_pipeline(
     serving_image: str = "us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01",
     fine_tune_flag: bool = False,
     epochs: int = 3,
-    model_name: str = 'gemma_2b_en'
+    model_name: str = 'gemma_2b_en',
+    pair_count: int = 6,
+    data_augmentation_iter: int = 4
 ):
 
     from google_cloud_pipeline_components.types import artifact_types
@@ -239,18 +248,21 @@ def fine_tune_pipeline(
     email = f'{Config.USER_NAME}@gmail.com'
     send_email = send_pipeline_completion_email_op(recipient_emails = email, project=project)
     with ExitHandler(send_email):
-        whatup = process_whatsapp_chat_op(bucket_name = bucket_name, directory = directory)
+        whatup = data_preparation_op(
+            bucket_name = bucket_name, directory = directory,
+            pair_count=pair_count, data_augmentation_iter=data_augmentation_iter
+        )
 
         trainer = fine_tunning(
             dataset_path=whatup.outputs['dataset_path'], model_paths=model_paths, fine_tune_flag=fine_tune_flag,
             epochs=epochs, model_name=model_name, bucket_name = bucket_name
         )
-        trainer.set_memory_limit("50G").set_cpu_limit("12.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
+        trainer.set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
         print("This is the dictionary", model_paths)
         converted = convert_checkpoints_op(
             keras_gcs_model=trainer.output, model_paths=model_paths, bucket_name = bucket_name
-        ).set_memory_limit("50G").set_cpu_limit("12.0").set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
+        ).set_memory_limit(model_paths['memory']).set_cpu_limit(model_paths['cpu']).set_accelerator_limit(1).add_node_selector_constraint(model_paths['accelerator_type'])
 
         import_unmanaged_model_task = importer_node.importer(
             artifact_uri=converted.output,
@@ -262,20 +274,20 @@ def fine_tune_pipeline(
 
         model_upload_op = ModelUploadOp(
             project=project,
-            display_name=f"Mini {Config.USER_NAME} model; first version automated",
+            display_name=f"Mini {Config.USER_NAME} model uploaded.",
             unmanaged_container_model=import_unmanaged_model_task.outputs["artifact"],
         )
         model_upload_op.after(import_unmanaged_model_task)
 
         endpoint_create_op = EndpointCreateOp(
             project=project,
-            display_name=f"End point created for {Config.USER_NAME}: End Point Created",
+            display_name=f"End point created for {Config.USER_NAME}",
         )
 
         model_end_point = ModelDeployOp(
             endpoint=endpoint_create_op.outputs["endpoint"],
             model=model_upload_op.outputs["model"],
-            deployed_model_display_name=f"Model {Config.USER_NAME}_{model_paths['model_name_vllm']}",
+            deployed_model_display_name=f"Model {model_paths['model_name_vllm']}, for user:{Config.USER_NAME}",
             dedicated_resources_machine_type=model_paths['machine_type'],
             dedicated_resources_min_replica_count=1,
             dedicated_resources_max_replica_count=1,
@@ -286,6 +298,9 @@ def fine_tune_pipeline(
         update_user_endpoint(endpoint_resource=model_end_point.outputs["gcp_resources"], email=email, project=project)
 
 if __name__ == '__main__':
+    
+    os.environ['TRAIN_DATA_DIR'] = 'andrehpereh/input_data' 
+    os.environ['BUCKET_NAME'] = 'personalize-chatbots-v1'
     from kfp import compiler
     from google.cloud import aiplatform as vertexai
     from config import Config

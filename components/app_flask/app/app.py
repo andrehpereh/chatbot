@@ -1,8 +1,11 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from google.cloud import bigquery, storage, pubsub_v1
 from werkzeug.datastructures import FileStorage
-from util import extract_info_from_endpoint
 import bcrypt, os, base64, json
+import logging
+
+logger = logging.getLogger(__name__)  # Use the function's module name
+logger.setLevel(logging.DEBUG)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -44,41 +47,88 @@ def predict_custom_trained_model_sample(
     api_endpoint: str = "us-central1-aiplatform.googleapis.com",
     user_input: str = input
 ):
+    logger.debug("Function predict_custom_trained_model_sample started")
     """
     `instances` can be either single instance of type dict or a list
     of instances.
     """
-    prompt_input = f"Sender:\n{user_input}\n\nAndres Perez:\n",
-    instances={'prompt': prompt_input[0] , 'max_tokens': 256, 'temperature': 1.4, 'top_p': 0.8, 'top_k': 4}
+    try:
+        prompt_input = f"Sender:\n{user_input}\n\nAndres Perez:\n"
+        # The two below should be a parameter.
+        conversation_track = session.get('conversation_track')[-3:]
+        # conversation_track_keeper = conversation_track
+        print("These are the last two values", conversation_track)
+        conversation_track_str = "\n\n".join(conversation_track  + [prompt_input])
+        print("This is the joined input for prediction")
+        print(conversation_track_str)
+        instances={'prompt': conversation_track_str, 'max_tokens': 1024, 'temperature': 1.2, 'top_p': 0.9, 'top_k': 8}
+
+        # The AI Platform services require regional API endpoints.
+        client_options = {"api_endpoint": api_endpoint}
+        # Initialize client that will be used to create and send requests.
+        # This client only needs to be created once, and can be reused for multiple requests.
+        client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
+        # The format of each instance should conform to the deployed model's prediction input schema.
+        instances = instances if isinstance(instances, list) else [instances]
+        instances = [
+            json_format.ParseDict(instance_dict, Value()) for instance_dict in instances
+        ]
+        parameters_dict = {}
+        parameters = json_format.ParseDict(parameters_dict, Value())
+        endpoint = client.endpoint_path(
+            project=project, location=location, endpoint=endpoint_id
+        )
+
+        response = client.predict(
+            endpoint=endpoint, instances=instances, parameters=parameters
+        )
+        # The predictions are a google.protobuf.Value representation of the model's predictions.
+        predictions = response.predictions
+        pattern = r"Perez:\nOutput:\n(.*)"
+        match = re.search(pattern, predictions[0])
+
+        if match:
+            logger.info(f"Successful prediction: {match.group(1)}")
+            print(conversation_track)
+            print("This is the last one")
+            print(prompt_input + str(match.group(1)))
+            conversation_track.append(prompt_input + str(match.group(1)))
+            print("This is the 3 tracker", conversation_track)
+            session['conversation_track'] = conversation_track
+            return match.group(1)
+        else:
+            logger.error("Prediction not found in the response.")
+            return "Error: Prediction not found in the response."
+
+    except Exception as e:
+        logger.exception(f"An error occurred: {e}")
+        raise  # Re-raise to allow for error handling at a higher level
     
-    # The AI Platform services require regional API endpoints.
-    client_options = {"api_endpoint": api_endpoint}
-    # Initialize client that will be used to create and send requests.
-    # This client only needs to be created once, and can be reused for multiple requests.
-    client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
-    # The format of each instance should conform to the deployed model's prediction input schema.
-    instances = instances if isinstance(instances, list) else [instances]
-    instances = [
-        json_format.ParseDict(instance_dict, Value()) for instance_dict in instances
-    ]
-    parameters_dict = {}
-    parameters = json_format.ParseDict(parameters_dict, Value())
-    endpoint = client.endpoint_path(
-        project=project, location=location, endpoint=endpoint_id
-    )
+def extract_info_from_endpoint(url):
+    """Extracts location, endpoint, and project information from a given AIPlatform URL.
 
-    response = client.predict(
-        endpoint=endpoint, instances=instances, parameters=parameters
-    )
-    # The predictions are a google.protobuf.Value representation of the model's predictions.
-    predictions = response.predictions
-    pattern = r"Perez:\nOutput:\n(.*)"
-    match = re.search(pattern, predictions[0])
+    Args:
+        url: The AIPlatform URL string.
 
+    Returns:
+        A dictionary containing the extracted values:
+            locations: The region.
+            endpoints: The endpoint ID.
+            projects: The project ID.
+    """
+
+    pattern = r"\/projects\/([^\/]+)\/locations\/([^\/]+)\/endpoints\/([^\/]+)\/operations\/([^\/]+)"
+    print(pattern)
+    match = re.search(pattern, url)
+    print(match)
     if match:
-        return match.group(1)
+        return {
+            "projects": match.group(1),
+            "locations": match.group(2),
+            "endpoints": match.group(3)
+        }
     else:
-        return "Error: Prediction not found in the response."
+        return None  # Or you could raise an exception if the URL is invalid
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -238,7 +288,7 @@ def handle_upload():
     message_data_json = json.dumps(message_data)
     message_data_bytes = message_data_json.encode('utf-8')
     print(message_data_bytes)
-    # publisher.publish(topic_path, message_data_bytes)
+    publisher.publish(topic_path, message_data_bytes)
     
     client = bigquery.Client(os.environ.get('PROJECT_ID'))
     table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
@@ -269,33 +319,35 @@ def chat_page():
         # Redirect to login if not logged in
         print("Nos regresamos al home")
         return redirect(url_for('home'))
+    session['conversation_track'] = []
     return render_template('chat.html')
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
     user_message = request.json['message']
+    logger.debug(f"Received user message: {user_message}")
     email = session.get('email')
     if not email:  
-        # Redirect to login if not logged in
-        print("Nos regresamos al home")
+        logger.info("User not logged in. Redirecting to home")
         return redirect(url_for('home'))
 
     endpoint = session.get('endpoint')
     project = session.get('project')
     location = session.get('location')
-    print(f"This is the endpoint{endpoint}, projects{project}, locations{location}")
-    # Placeholder chatbot code
-    #response = predict_custom_trained_model_sample(
-    #    project=project,
-    #    endpoint_id=endpoint,
-    #    location=location,
-    #    user_input= user_message,
-    #)
-    print(user_message)
-    print("Esta es la respuesta")
-    response = "Hello"
-    print(response)
+    logger.debug(f"Session data: endpoint={endpoint}, project={project}, location={location}")
+    try:
+        response = predict_custom_trained_model_sample(
+            project=project,
+            endpoint_id=endpoint,
+            location=location,
+            user_input= user_message,
+        )
+    except Exception as e:
+        logger.exception(f"Error in chatbot prediction: {e}")
+        response = "An error occurred. Please try again later."
+    # logger.debug(f"Returning JSON response: {'message': response}")
     return jsonify({'message': response})
+
 
 if __name__ == '__main__':
     print("Pues si empezo a correr esta madre")
