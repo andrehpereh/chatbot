@@ -238,7 +238,7 @@ def handle_upload():
     message_data_json = json.dumps(message_data)
     message_data_bytes = message_data_json.encode('utf-8')
     print(message_data_bytes)
-    # publisher.publish(topic_path, message_data_bytes)
+    publisher.publish(topic_path, message_data_bytes)
     
     client = bigquery.Client(os.environ.get('PROJECT_ID'))
     table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
@@ -285,12 +285,12 @@ def send_message():
     location = session.get('location')
     print(f"This is the endpoint{endpoint}, projects{project}, locations{location}")
     # Placeholder chatbot code
-    #response = predict_custom_trained_model_sample(
-    #    project=project,
-    #    endpoint_id=endpoint,
-    #    location=location,
-    #    user_input= user_message,
-    #)
+    response = predict_custom_trained_model_sample(
+        project=project,
+        endpoint_id=endpoint,
+        location=location,
+        user_input= user_message,
+    )
     print(user_message)
     print("Esta es la respuesta")
     response = "Hello"
