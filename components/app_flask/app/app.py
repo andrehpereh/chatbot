@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from google.cloud import bigquery, storage, pubsub_v1
 from werkzeug.datastructures import FileStorage
-from util import extract_info_from_endpoint
+#from util import extract_info_from_endpoint
 import bcrypt, os, base64, json
 
 app = Flask(__name__)
@@ -79,6 +79,32 @@ def predict_custom_trained_model_sample(
         return match.group(1)
     else:
         return "Error: Prediction not found in the response."
+    
+def extract_info_from_endpoint(url):
+    """Extracts location, endpoint, and project information from a given AIPlatform URL.
+
+    Args:
+        url: The AIPlatform URL string.
+
+    Returns:
+        A dictionary containing the extracted values:
+            locations: The region.
+            endpoints: The endpoint ID.
+            projects: The project ID.
+    """
+
+    pattern = r"\/projects\/([^\/]+)\/locations\/([^\/]+)\/endpoints\/([^\/]+)\/operations\/([^\/]+)"
+    print(pattern)
+    match = re.search(pattern, url)
+    print(match)
+    if match:
+        return {
+            "projects": match.group(1),
+            "locations": match.group(2),
+            "endpoints": match.group(3)
+        }
+    else:
+        return None  # Or you could raise an exception if the URL is invalid
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -238,7 +264,7 @@ def handle_upload():
     message_data_json = json.dumps(message_data)
     message_data_bytes = message_data_json.encode('utf-8')
     print(message_data_bytes)
-    # publisher.publish(topic_path, message_data_bytes)
+    publisher.publish(topic_path, message_data_bytes)
     
     client = bigquery.Client(os.environ.get('PROJECT_ID'))
     table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
@@ -285,17 +311,18 @@ def send_message():
     location = session.get('location')
     print(f"This is the endpoint{endpoint}, projects{project}, locations{location}")
     # Placeholder chatbot code
-    #response = predict_custom_trained_model_sample(
-    #    project=project,
-    #    endpoint_id=endpoint,
-    #    location=location,
-    #    user_input= user_message,
-    #)
+    response = predict_custom_trained_model_sample(
+        project=project,
+        endpoint_id=endpoint,
+        location=location,
+        user_input= user_message,
+    )
     print(user_message)
     print("Esta es la respuesta")
     response = "Hello"
     print(response)
     return jsonify({'message': response})
+
 
 if __name__ == '__main__':
     print("Pues si empezo a correr esta madre")

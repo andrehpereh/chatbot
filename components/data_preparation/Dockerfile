@@ -3,7 +3,7 @@ FROM python:3.9-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install -U -r requirements.txt
-COPY data_ingestion.py /app
+COPY . /app
 WORKDIR /app
 RUN ls
 RUN pwd
