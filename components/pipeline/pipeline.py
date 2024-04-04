@@ -36,12 +36,27 @@ def send_pipeline_completion_email_op(
         email_password (str): Password for the sender's email account.
         success_flag_path (str): Path to the success flag file. Defaults to '/tmp/pipeline_success_flag.txt'.
     """
-
-    msg = MIMEText(
-        f"Kubeflow Pipeline Completion Status; {status.state} and Job resource name:{status.pipeline_job_resource_name},\
-        \nPipeline task name: {status.pipeline_task_name} Errormessage: , {status.error_message}"
-    )
-    msg['Subject'] = 'Kubeflow Pipeline Completion'
+    if status.state == 'SUCCEEDED':
+        msg = MIMEText(
+            f"""Chatbot Completion Status ; {status.state}:\
+            \nYou can start interacting with it by clicking the following link: \
+            \nhttps://chattingbot-gqf6v2rlha-uc.a.run.app/home \
+            \nPlease let us know if you have any questions or feedback. \
+            \n\nBest regards, \
+            \nAndres Perez
+            """
+        )
+    else:
+        msg = MIMEText(
+            f"""Chatbot Completion Status ; Unavailable:\
+            \nWe sincerely apologize for the unexpected delay. We've encountered a technical issue and are working to resolve it as quickly as possible. 
+            \n\nWe'll send you an update as soon as your chatbot is available. Thank you for your patience.  \
+            \n\nBest regards, \
+            \nAndres Perez
+            """
+        )
+    
+    msg['Subject'] = f"Your Chatbot has {status.state}"
     msg['From'] = sender_email
     msg['To'] = ', '.join(recipient_emails)
 

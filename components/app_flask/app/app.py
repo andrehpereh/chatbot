@@ -61,7 +61,7 @@ def predict_custom_trained_model_sample(
         conversation_track_str = "\n\n".join(conversation_track  + [prompt_input])
         print("This is the joined input for prediction")
         print(conversation_track_str)
-        instances={'prompt': conversation_track_str, 'max_tokens': 1024, 'temperature': 1.2, 'top_p': 0.9, 'top_k': 8}
+        instances={'prompt': conversation_track_str, 'max_tokens': 1024, 'temperature': 1, 'top_p': 0.7, 'top_k': 6}
 
         # The AI Platform services require regional API endpoints.
         client_options = {"api_endpoint": api_endpoint}
