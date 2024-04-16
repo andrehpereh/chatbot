@@ -7,20 +7,18 @@ import logging
 from kfp import compiler
 from google.cloud import aiplatform as vertexai
 
-
 @functions_framework.cloud_event
 def trigger_pipeline_cloud_function(cloud_event):
     try:
         parameters = base64.b64decode(cloud_event.data["message"]["data"])
         parameters = json.loads(parameters.decode('utf-8'))
         print("Parameters fine tunning personalized bot:", parameters)
-        prod_branch = 'master_v5'
-        print("This is the production pipeline branch; should not be hardcoded.")
-        os.environ['TAG_NAME'] = prod_branch
+        if len(parameters['tag_version']) >= 0:
+            os.environ['TAG_NAME'] = parameters['tag_version']
         os.environ['USER_NAME'] = parameters['user_name']
         os.environ['MODEL_NAME'] = parameters['model_name']
-        os.environ['MY_API_KEY'] = parameters['project_id'] 
-        os.environ['BUCKET_NAME'] = parameters['bucket_name'] 
+        os.environ['MY_API_KEY'] = parameters['project_id']
+        os.environ['BUCKET_NAME'] = parameters['bucket_name']
         os.environ['FINE_TUNE_FLAG'] = 'True'
         os.environ['EPOCHS'] = parameters['epochs']
         os.environ['PROJECT_ID'] = parameters['project_id']

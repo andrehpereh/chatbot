@@ -18,9 +18,9 @@ steps:
 
 - name: 'gcr.io/cloud-builders/gcloud'
   args:
-    - 'functions' 
-    - 'deploy' 
-    - 'pipeline_trigger_master_website' 
+    - 'functions'
+    - 'deploy'
+    - 'pipeline_trigger_master_website'
     - '--gen2' 
     - '--region=us-central1' 
     - '--runtime=python39'
@@ -28,5 +28,7 @@ steps:
     - '--entry-point=trigger_pipeline_cloud_function' 
     - '--trigger-topic=your-pipeline-trigger-topic' 
     - '--memory=2GiB'
+    - '--set-env-vars'
+    - 'TAG_NAME=$_PROD_TAG'
   id: 'WS_B'
   waitFor: ['-']

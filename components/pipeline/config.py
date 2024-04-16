@@ -23,7 +23,7 @@ class Config:
     PROJECT_ID = os.getenv("PROJECT_ID", "able-analyst-416817")  # Replace with the logic to get your project ID 
     # Other Variables
     KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", "andrehpereh1")
-    USER_NAME = os.getenv("USER_NAME", "master")
+    USER_NAME = os.getenv("USER_NAME", "andrehpereh")
     KAGGLE_KEY = os.getenv("KAGGLE_KEY", "5859e39806d9456749dcbac685f04bc9")
     KERAS_BACKEND = os.getenv("KERAS_BACKEND", "tensorflow")
     REGION = os.getenv("REGION", "us-central1")

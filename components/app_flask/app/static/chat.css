@@ -14,6 +14,7 @@ h1 {
   text-align: center;
 }
 #chat-container {
+  position: relative; /* Make container a positioning context */
   max-width: 600px;
   margin: 0 auto;
   padding: 20px;
@@ -49,3 +50,19 @@ h1 {
         #send-button:hover {
           background-color: #0056b3;
         }
+
+#logout-button {
+  font-size: 16px; /* Adjust font size as needed */
+  padding: 10px 20px; /* Adjust padding as needed */
+  background-color: #ccc; /* Adjust background color as desired */
+  color: #333;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  position: absolute; /* Absolute positioning */
+  bottom: 5px;  /* Position from the bottom edge */
+  right: 5px;  /* Position from the right edge */
+}
+#logout-button:hover {
+  background-color: #ddd; /* Adjust hover color as desired */
+}
