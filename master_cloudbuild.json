@@ -1,0 +1,109 @@
+{
+  "steps": [
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "build",
+        "-t",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_DATA_PREP:$TAG_NAME",
+        "."
+      ],
+      "dir": "./components/data_preparation"
+    },
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "push",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_DATA_PREP:$TAG_NAME"
+      ]
+    },
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "build",
+        "-t",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_FINE_TUNE:$TAG_NAME",
+        "--build-arg",
+        "KAGGLE_KEY=$_KAGGLE_KEY",
+        "--build-arg",
+        "KAGGLE_USERNAME=$_KAGGLE_USERNAME",
+        "."
+      ],
+      "dir": "./components/fine_tunning"
+    },
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "push",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_FINE_TUNE:$TAG_NAME"
+      ]
+    },
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "build",
+        "-t",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME",
+        "."
+      ],
+      "dir": "./components/pipeline"
+    },
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "push",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME"
+      ]
+    },
+    {
+      "name": "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME",
+      "dir": "./components/pipeline",
+      "args": [
+        "python",
+        "pipeline.py"
+      ],
+      "env": [
+        "BUCKET_NAME=$_BUCKET_NAME",
+        "FINE_TUNE_FLAG=$_FINE_TUNE_FLAG",
+        "EPOCHS=$_EPOCHS",
+        "MODEL_NAME=$_MODEL_NAME",
+        "TAG_NAME=$TAG_NAME"
+      ]
+    },
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "build",
+        "-t",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME",
+        "."
+      ],
+      "dir": "./components/app_flask"
+    },
+    {
+      "name": "gcr.io/cloud-builders/docker",
+      "args": [
+        "push",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME"
+      ]
+    },
+    {
+      "name": "gcr.io/cloud-builders/gcloud",
+      "args": [
+        "run",
+        "deploy",
+        "chattingbot_dev",
+        "--image",
+        "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME",
+        "--region",
+        "$LOCATION",
+        "--platform",
+        "managed",
+        "--allow-unauthenticated",
+        "--port",
+        "5000"
+      ]
+    }
+  ],
+  "timeout": "72000s"
+}

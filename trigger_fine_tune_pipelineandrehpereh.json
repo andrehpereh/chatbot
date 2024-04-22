@@ -1,0 +1,97 @@
+{
+  "components": {
+    "comp-triger-pipeline-component": {
+      "executorLabel": "exec-triger-pipeline-component"
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-triger-pipeline-component": {
+        "container": {
+          "args": [
+            "python",
+            "pipeline.py"
+          ],
+          "env": [
+            {
+              "name": "MODEL_NAME",
+              "value": "{{channel:task=;name=model_name;type=String;}}"
+            },
+            {
+              "name": "TRAIN_DATA_DIR",
+              "value": "{{channel:task=;name=blob_folder;type=String;}}"
+            },
+            {
+              "name": "BUCKET_NAME",
+              "value": "{{channel:task=;name=bucket_name;type=String;}}"
+            },
+            {
+              "name": "FINE_TUNE_FLAG",
+              "value": "{{channel:task=;name=fine_tune_flag;type=Boolean;}}"
+            },
+            {
+              "name": "USER_NAME",
+              "value": "{{channel:task=;name=user_name;type=String;}}"
+            },
+            {
+              "name": "PROJECT_ID",
+              "value": "{{channel:task=;name=project;type=String;}}"
+            },
+            {
+              "name": "EPOCHS",
+              "value": "{{channel:task=;name=epochs;type=String;}}"
+            }
+          ],
+          "image": "gcr.io/able-analyst-416817/gemma-chatbot-pipeline-app:latest"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "trigger-pipeline"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "triger-pipeline-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-triger-pipeline-component"
+          },
+          "taskInfo": {
+            "name": "triger-pipeline-component"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "blob_folder": {
+          "parameterType": "STRING"
+        },
+        "bucket_name": {
+          "parameterType": "STRING"
+        },
+        "epochs": {
+          "parameterType": "STRING"
+        },
+        "fine_tune_flag": {
+          "parameterType": "BOOLEAN"
+        },
+        "model_name": {
+          "parameterType": "STRING"
+        },
+        "project": {
+          "parameterType": "STRING"
+        },
+        "user_name": {
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.7.0"
+}

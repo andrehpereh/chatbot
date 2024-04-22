@@ -1,0 +1,5 @@
+flask
+google-cloud-aiplatform
+protobuf
+google-cloud-pubsub
+bcrypt

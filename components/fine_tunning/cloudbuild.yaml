@@ -1,0 +1,26 @@
+# Submits a Cloud Build job that builds and deploys a flask application.
+#
+#options:
+#    env:
+#      - '_KERAS_BACKEND=tensorflow'
+#      - '_XLA_PYTHON_CLIENT_MEM_FRACTION=1.00'
+#      - '_KAGGLE_USERNAME=andrehpereh1'
+#      - '_KAGGLE_KEY=5859e39806d9456749dcbac685f04bc9' 
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '-t'
+  - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_FINE_TUNE:$TAG_NAME'
+  - '--build-arg'
+  - 'KAGGLE_KEY=$_KAGGLE_KEY' # Notice the two dollar signs '$$'
+  - '--build-arg'
+  - 'KAGGLE_USERNAME=$_KAGGLE_USERNAME'
+  - '.'
+  dir: './components/fine_tunning'  # Build context: 'fine_tunning' component
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'push'
+  - 'gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_FINE_TUNE:$TAG_NAME'
+
+

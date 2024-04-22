@@ -1,0 +1,11 @@
+.container {
+    width: 500px;
+    margin: 50px auto;
+    text-align: center;
+    border: 1px solid #ddd;
+    padding: 20px;
+}
+
+input[type="file"], input[type="text"] {
+    margin-bottom: 15px;
+}

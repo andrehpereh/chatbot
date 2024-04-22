@@ -1,0 +1,11 @@
+Cloudbuild components, check the folder/subfolder
+Allow cloudbuild access to everything, (cloud run)
+
+
+
+
+# 1. @dsl.container_component would is platform agnostic and could run any programming language (depends on the container image used)
+# 2. Resource also can be specified within the pipeline directly and it is platform agnostic.
+
+
+# 3. CustomTrainingJobOp and create_custom_training_job_from_component is vertex specific and one can specific resources and command like in container_component (1 and two combined)
