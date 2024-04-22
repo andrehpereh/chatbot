@@ -23,7 +23,7 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
     if len(child_files) != len(descriptions):
         raise ValueError("Number of descriptions must match the number of child files")
 
-    master_config = {'steps': []}
+    master_config = {'steps': [], 'availableSecrets': []}
 
     for child_file, description in zip(child_files, descriptions):
         try:
@@ -40,6 +40,10 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
 
             # Indentation fix: Directly append the steps from the child config
             master_config['steps'].extend(child_config['steps'])
+            if 'availableSecrets' in child_config.keys():
+                print(child_file)
+                print(child_config['availableSecrets'])
+                master_config['availableSecrets'] = child_config['availableSecrets'] # This should expand also.
             
 
         except FileNotFoundError:
