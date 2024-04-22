@@ -23,7 +23,7 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
     if len(child_files) != len(descriptions):
         raise ValueError("Number of descriptions must match the number of child files")
 
-    master_config = {'steps': []}
+    master_config = {'steps': [], 'availableSecrets': []}
 
     for child_file, description in zip(child_files, descriptions):
         try:
@@ -40,6 +40,10 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
 
             # Indentation fix: Directly append the steps from the child config
             master_config['steps'].extend(child_config['steps'])
+            if 'availableSecrets' in child_config.keys():
+                print(child_file)
+                print(child_config['availableSecrets'])
+                master_config['availableSecrets'] = child_config['availableSecrets'] # This should expand also.
             
 
         except FileNotFoundError:
@@ -48,6 +52,7 @@ def merge_cloudbuild_files(child_files, descriptions, master_filepath="master_cl
             raise ValueError(f"Invalid YAML in '{child_file}': {e}")
     print("This is all", master_config)
     master_config['timeout'] = f'{timeout_hours * 60 * 60}s'
+    master_config['options'] = {'machineType': 'E2_HIGHCPU_8'}
     with open(master_filepath, 'w') as f:
         json.dump(master_config, f, indent=2)
     # flattened_list = [item for sublist in substitutions for item in sublist]
