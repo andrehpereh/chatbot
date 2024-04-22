@@ -11,4 +11,5 @@ COPY . /trainer
 WORKDIR /trainer
 RUN ls
 
-ENTRYPOINT ["python"]  
+ENTRYPOINT ["python"]
+# CMD ["-c", "import os; my_variable = os.environ['KAGGLE_KEY']; print(my_variable)"]
