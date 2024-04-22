@@ -8,13 +8,21 @@
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_DATA_PREP:$TAG_NAME",
         "."
       ],
-      "dir": "./components/data_preparation"
+      "dir": "./components/data_preparation",
+      "id": "DP_A",
+      "waitFor": [
+        "-"
+      ]
     },
     {
       "name": "gcr.io/cloud-builders/docker",
       "args": [
         "push",
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_DATA_PREP:$TAG_NAME"
+      ],
+      "id": "DP_B",
+      "waitFor": [
+        "DP_A"
       ]
     },
     {
@@ -29,13 +37,21 @@
         "KAGGLE_USERNAME=$_KAGGLE_USERNAME",
         "."
       ],
-      "dir": "./components/fine_tunning"
+      "dir": "./components/fine_tunning",
+      "id": "FT_A",
+      "waitFor": [
+        "-"
+      ]
     },
     {
       "name": "gcr.io/cloud-builders/docker",
       "args": [
         "push",
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_FINE_TUNE:$TAG_NAME"
+      ],
+      "id": "FT_B",
+      "waitFor": [
+        "FT_A"
       ]
     },
     {
@@ -46,13 +62,21 @@
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME",
         "."
       ],
-      "dir": "./components/pipeline"
+      "dir": "./components/pipeline",
+      "id": "P_A",
+      "waitFor": [
+        "-"
+      ]
     },
     {
       "name": "gcr.io/cloud-builders/docker",
       "args": [
         "push",
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_PIPELINE:$TAG_NAME"
+      ],
+      "id": "P_B",
+      "waitFor": [
+        "P_A"
       ]
     },
     {
@@ -67,7 +91,8 @@
         "FINE_TUNE_FLAG=$_FINE_TUNE_FLAG",
         "EPOCHS=$_EPOCHS",
         "MODEL_NAME=$_MODEL_NAME",
-        "TAG_NAME=$TAG_NAME"
+        "TAG_NAME=$TAG_NAME",
+        "PROJECT_ID=$PROJECT_ID"
       ]
     },
     {
@@ -78,13 +103,21 @@
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME",
         "."
       ],
-      "dir": "./components/app_flask"
+      "dir": "./components/app_flask",
+      "id": "APP_A",
+      "waitFor": [
+        "-"
+      ]
     },
     {
       "name": "gcr.io/cloud-builders/docker",
       "args": [
         "push",
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME"
+      ],
+      "id": "APP_B",
+      "waitFor": [
+        "APP_A"
       ]
     },
     {
@@ -92,7 +125,7 @@
       "args": [
         "run",
         "deploy",
-        "chattingbot_dev",
+        "chattingbotdev",
         "--image",
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_RUNNING_APP:$TAG_NAME",
         "--region",
@@ -102,6 +135,10 @@
         "--allow-unauthenticated",
         "--port",
         "5000"
+      ],
+      "id": "APP_C",
+      "waitFor": [
+        "APP_B"
       ]
     }
   ],

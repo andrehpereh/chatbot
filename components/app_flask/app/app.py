@@ -2,6 +2,10 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from google.cloud import bigquery, storage, pubsub_v1
 from werkzeug.datastructures import FileStorage
 import bcrypt, os, base64, json
+import logging
+
+logger = logging.getLogger(__name__)  # Use the function's module name
+logger.setLevel(logging.DEBUG)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -43,41 +47,88 @@ def predict_custom_trained_model_sample(
     api_endpoint: str = "us-central1-aiplatform.googleapis.com",
     user_input: str = input
 ):
+    logger.debug("Function predict_custom_trained_model_sample started")
     """
     `instances` can be either single instance of type dict or a list
     of instances.
     """
-    prompt_input = f"Sender:\n{user_input}\n\nAndres Perez:\n",
-    instances={'prompt': prompt_input[0] , 'max_tokens': 256, 'temperature': 1.4, 'top_p': 0.8, 'top_k': 4}
+    try:
+        prompt_input = f"Sender:\n{user_input}\n\nAndres Perez:\n"
+        # The two below should be a parameter.
+        conversation_track = session.get('conversation_track')[-3:]
+        # conversation_track_keeper = conversation_track
+        print("These are the last two values", conversation_track)
+        conversation_track_str = "\n\n".join(conversation_track  + [prompt_input])
+        print("This is the joined input for prediction")
+        print(conversation_track_str)
+        instances={'prompt': conversation_track_str, 'max_tokens': 1024, 'temperature': 1, 'top_p': 0.7, 'top_k': 6}
+
+        # The AI Platform services require regional API endpoints.
+        client_options = {"api_endpoint": api_endpoint}
+        # Initialize client that will be used to create and send requests.
+        # This client only needs to be created once, and can be reused for multiple requests.
+        client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
+        # The format of each instance should conform to the deployed model's prediction input schema.
+        instances = instances if isinstance(instances, list) else [instances]
+        instances = [
+            json_format.ParseDict(instance_dict, Value()) for instance_dict in instances
+        ]
+        parameters_dict = {}
+        parameters = json_format.ParseDict(parameters_dict, Value())
+        endpoint = client.endpoint_path(
+            project=project, location=location, endpoint=endpoint_id
+        )
+
+        response = client.predict(
+            endpoint=endpoint, instances=instances, parameters=parameters
+        )
+        # The predictions are a google.protobuf.Value representation of the model's predictions.
+        predictions = response.predictions
+        pattern = r"Perez:\nOutput:\n(.*)"
+        match = re.search(pattern, predictions[0])
+
+        if match:
+            logger.info(f"Successful prediction: {match.group(1)}")
+            print(conversation_track)
+            print("This is the last one")
+            print(prompt_input + str(match.group(1)))
+            conversation_track.append(prompt_input + str(match.group(1)))
+            print("This is the 3 tracker", conversation_track)
+            session['conversation_track'] = conversation_track
+            return match.group(1)
+        else:
+            logger.error("Prediction not found in the response.")
+            return "Error: Prediction not found in the response."
+
+    except Exception as e:
+        logger.exception(f"An error occurred: {e}")
+        raise  # Re-raise to allow for error handling at a higher level
     
-    # The AI Platform services require regional API endpoints.
-    client_options = {"api_endpoint": api_endpoint}
-    # Initialize client that will be used to create and send requests.
-    # This client only needs to be created once, and can be reused for multiple requests.
-    client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
-    # The format of each instance should conform to the deployed model's prediction input schema.
-    instances = instances if isinstance(instances, list) else [instances]
-    instances = [
-        json_format.ParseDict(instance_dict, Value()) for instance_dict in instances
-    ]
-    parameters_dict = {}
-    parameters = json_format.ParseDict(parameters_dict, Value())
-    endpoint = client.endpoint_path(
-        project=project, location=location, endpoint=endpoint_id
-    )
+def extract_info_from_endpoint(url):
+    """Extracts location, endpoint, and project information from a given AIPlatform URL.
 
-    response = client.predict(
-        endpoint=endpoint, instances=instances, parameters=parameters
-    )
-    # The predictions are a google.protobuf.Value representation of the model's predictions.
-    predictions = response.predictions
-    pattern = r"Perez:\nOutput:\n(.*)"
-    match = re.search(pattern, predictions[0])
+    Args:
+        url: The AIPlatform URL string.
 
+    Returns:
+        A dictionary containing the extracted values:
+            locations: The region.
+            endpoints: The endpoint ID.
+            projects: The project ID.
+    """
+
+    pattern = r"\/projects\/([^\/]+)\/locations\/([^\/]+)\/endpoints\/([^\/]+)\/operations\/([^\/]+)"
+    print(pattern)
+    match = re.search(pattern, url)
+    print(match)
     if match:
-        return match.group(1)
+        return {
+            "projects": match.group(1),
+            "locations": match.group(2),
+            "endpoints": match.group(3)
+        }
     else:
-        return "Error: Prediction not found in the response."
+        return None  # Or you could raise an exception if the URL is invalid
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -103,10 +154,12 @@ def signup():
         client = bigquery.Client(os.environ.get('PROJECT_ID'))
         table_ref = client.dataset(DATASET_ID).table(USERS_TABLE)
         table = client.get_table(table_ref)
-
-        # Insert data with error handling
-        row_to_insert = [(email, hashed_password.decode('utf-8'))]
-        errors = client.insert_rows(table, row_to_insert)
+        row_to_insert = {
+            'email': email, 
+            'password_hash': hashed_password.decode('utf-8')
+        }
+        client.insert_rows(table, [row_to_insert]) 
+        errors = client.insert_rows(table, [row_to_insert]) 
         if errors:  # Check if there were errors
             return 'Error submitting data: {}'.format(errors), 500
         else:
@@ -136,24 +189,37 @@ def login():
             print("This is each row", row)
             stored_password_hash = row.password_hash  # Assuming 'password' is the column name
         # Check if user already trained.
-        query = f"SELECT training_status FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USER_TRAINING_STATUS}` WHERE email = '{email}'"
+        query = f"""
+            SELECT training_status, end_point
+            FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USER_TRAINING_STATUS}`
+            WHERE email = '{email}'
+            ORDER BY created_at DESC
+            LIMIT 1
+        """
         print("This is el query...", query)
         results = client.query(query).result()
         print("This is the results", results, type(results))
         user_training_status = None
+        endpoint_uri = None
         for row in results:
             print("This is each row", row)
             user_training_status = row.training_status  # Assuming 'training_status' is the column name
-
+            endpoint_uri = row.end_point
         # Verify password
         if stored_password_hash and bcrypt.checkpw(password.encode('utf-8'), stored_password_hash.encode('utf-8')):
-            # Successful login
-            print("This is the email", email)
-            session['email'] = email 
+            session['email'] = email
             if user_training_status:
+                endpoint_details = extract_info_from_endpoint(endpoint_uri)
+                print("This is the email", email)
+                session['endpoint'] = endpoint_details["endpoints"]
+                session['location'] = endpoint_details["locations"]
+                session['project'] = endpoint_details["projects"]
+                print(f"This is the endpoint{session['endpoint']}, projects{session['project']}, locations{session['location']}")
+                print(user_training_status)
                 return redirect(url_for('chat_page'))
             else:
                 return redirect(url_for('upload'))
+            # Successful login
         else:
             # Invalid credentials
             return 'Invalid email or password', 401
@@ -175,13 +241,13 @@ def handle_upload():
     email = session.get('email')
     print("This is the email, ahuevito", email)
     print(type(email))
-    text_data = request.form.get('text')
-    print(text_data)
+    code_version = request.form.get('code_version')
+    print("This is the code version", code_version)
     model_name = request.form.get('model_name')
     epochs = request.form.get('epochs')
     print(f"Selected model: {model_name}, Epochs: {epochs}")
     user_name = re.match(r'^([^@]+)', str(email)).group(1)
-    print("This is the text", text_data)
+    print("This is the code version", code_version)
 
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(os.environ.get('PROJECT_ID'), PUBSUB_TOPIC)
@@ -215,6 +281,7 @@ def handle_upload():
         "model_name": model_name,
         "epochs": epochs,
         "bucket_name": BUCKET_NAME,
+        "tag_version": code_version,
         "project_id": os.environ.get('PROJECT_ID')
         
     }
@@ -222,8 +289,23 @@ def handle_upload():
     message_data_bytes = message_data_json.encode('utf-8')
     print(message_data_bytes)
     publisher.publish(topic_path, message_data_bytes)
-
-    return "Upload Successful!", 200 
+    
+    client = bigquery.Client(os.environ.get('PROJECT_ID'))
+    table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
+    table = client.get_table(table_ref)
+    row_to_insert = {
+        'email': email,
+        'training_status': False
+    }
+    print("This is the rows to upload", row_to_insert)
+    client.insert_rows(table, [row_to_insert]) 
+    errors = client.insert_rows(table, [row_to_insert]) 
+    if errors:  # Check if there were errors
+        return 'Error submitting data: {}'.format(errors), 500
+    else:
+        print("Upload Successful!")
+        return "Upload Successful!", 200 
+     
 
 @app.route('/home')
 def home():
@@ -232,23 +314,40 @@ def home():
 
 @app.route('/chat_page')
 def chat_page():
+    email = session.get('email')
+    if not email:  
+        # Redirect to login if not logged in
+        print("Nos regresamos al home")
+        return redirect(url_for('home'))
+    session['conversation_track'] = []
     return render_template('chat.html')
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
     user_message = request.json['message']
-    # Placeholder chatbot code
-    #response = predict_custom_trained_model_sample(
-     #   project="24796876098",
-      #  endpoint_id="7974742443096539136",
-       # location="us-central1",
-        #user_input= user_message,
-    #)
-    print(user_message)
-    print("Esta es la respuesta")
-    response = "Hello"
-    print(response)
+    logger.debug(f"Received user message: {user_message}")
+    email = session.get('email')
+    if not email:  
+        logger.info("User not logged in. Redirecting to home")
+        return redirect(url_for('home'))
+
+    endpoint = session.get('endpoint')
+    project = session.get('project')
+    location = session.get('location')
+    logger.debug(f"Session data: endpoint={endpoint}, project={project}, location={location}")
+    try:
+        response = predict_custom_trained_model_sample(
+            project=project,
+            endpoint_id=endpoint,
+            location=location,
+            user_input= user_message,
+        )
+    except Exception as e:
+        logger.exception(f"Error in chatbot prediction: {e}")
+        response = "An error occurred. Please try again later."
+    # logger.debug(f"Returning JSON response: {'message': response}")
     return jsonify({'message': response})
+
 
 if __name__ == '__main__':
     print("Pues si empezo a correr esta madre")

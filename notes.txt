@@ -1,3 +1,5 @@
+find . -type f \( -path '*/\.ipynb_checkpoints/*' -or -path '*/\__pycache__/*' \) -exec rm -rf {} \;
+
 Cloudbuild components, check the folder/subfolder
 Allow cloudbuild access to everything, (cloud run) (artifact registry admin)
 Enable AI Platform Training & Prediction API 
@@ -25,8 +27,26 @@ Gran cloud permission to run vertex ai pipeline
 # Check how to include model_name as a parameters instead of always declearing it as ENV 
 
 
+gcloud builds triggers create github \
+    --repo-name=<YOUR-REPO-NAME> \ 
+    --repo-owner=<YOUR-REPO-OWNER> \
+    --branch-pattern="main" \ 
+    --build-config="cloudbuild.yaml" 
+
 
 find . -type f \( -not -path '*/\.ipynb_checkpoints/*' -and -not -path '*/\__pycache__/*' \) -exec git add {} +
+
+
+This is the github token
+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
+
+
+
+
+
+
+
+
 
 
 
