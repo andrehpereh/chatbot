@@ -32,12 +32,15 @@
         "-t",
         "gcr.io/$PROJECT_ID/$_CONTAINER_IMAGE_NAME_FINE_TUNE:$TAG_NAME",
         "--build-arg",
-        "KAGGLE_KEY=$_KAGGLE_KEY",
+        "KAGGLE_KEY=$$KAGGLE_KEY",
         "--build-arg",
         "KAGGLE_USERNAME=$_KAGGLE_USERNAME",
         "."
       ],
       "dir": "./components/fine_tunning",
+      "secretEnv": [
+        "KAGGLE_KEY"
+      ],
       "id": "FT_A",
       "waitFor": [
         "-"
