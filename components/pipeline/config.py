@@ -24,7 +24,7 @@ class Config:
     # Other Variables
     KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", "andrehpereh1")
     USER_NAME = os.getenv("USER_NAME", "andrehpereh")
-    KAGGLE_KEY = os.getenv("KAGGLE_KEY", "5859e39806d9456749dcbac685f04bc9")
+    KAGGLE_KEY = os.getenv("KAGGLE_KEY", "KAGGLE_KEY")
     KERAS_BACKEND = os.getenv("KERAS_BACKEND", "tensorflow")
     REGION = os.getenv("REGION", "us-central1")
     BUCKET_NAME = os.getenv("BUCKET_NAME", f"{PROJECT_ID}-chatbot-v1")
