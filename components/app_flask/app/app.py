@@ -32,7 +32,7 @@ from google.protobuf.struct_pb2 import Value
 import re
 
 # Connect to BigQuery
-os.environ['PROJECT_ID'] = 'able-analyst-416817'
+print("This is the project Id from environment", os.environ.get('PROJECT_ID'))
 DATASET_ID = 'chatbot'
 USERS_TABLE = 'users'
 USER_TRAINING_STATUS = 'user_training_status'
