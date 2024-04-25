@@ -17,7 +17,6 @@ def trigger_pipeline_cloud_function(cloud_event):
             os.environ['TAG_NAME'] = parameters['tag_version']
         os.environ['USER_NAME'] = parameters['user_name']
         os.environ['MODEL_NAME'] = parameters['model_name']
-        os.environ['MY_API_KEY'] = parameters['project_id']
         os.environ['BUCKET_NAME'] = parameters['bucket_name']
         os.environ['FINE_TUNE_FLAG'] = 'True'
         os.environ['EPOCHS'] = parameters['epochs']

@@ -4,96 +4,85 @@ from werkzeug.datastructures import FileStorage
 import bcrypt, os, base64, json
 import logging
 
-logger = logging.getLogger(__name__)  # Use the function's module name
+# Set up logging
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# Copyright 2020 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Constants for BigQuery, Storage, and Pub/Sub
+DATASET_ID = 'chatbot'
+USERS_TABLE = 'users'
+USER_TRAINING_STATUS = 'user_training_status'
+BUCKET_NAME = f"{os.environ.get('PROJECT_ID')}-personalized-chatbots-v1"
+PUBSUB_TOPIC = 'your-pipeline-trigger-topic'
 
-# [START aiplatform_predict_custom_trained_model_sample]
+# Import libraries for AI Platform predictions
 from typing import Dict, List, Union
 from google.cloud import aiplatform
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Value
 import re
 
-# Connect to BigQuery
-print("This is the project Id from environment", os.environ.get('PROJECT_ID'))
-DATASET_ID = 'chatbot'
-USERS_TABLE = 'users'
-USER_TRAINING_STATUS = 'user_training_status'
-BUCKET_NAME = "personalize-chatbots-v1"
-print(BUCKET_NAME)
-PUBSUB_TOPIC = 'your-pipeline-trigger-topic'
+# Log project ID and bucket name
+logger.debug(f"Project ID from environment: {os.environ.get('PROJECT_ID')}")
+logger.debug(f"Using bucket: {BUCKET_NAME}")
 
-def predict_custom_trained_model_sample(
-    project: str,
-    endpoint_id: str,
-    location: str = "us-central1",
-    api_endpoint: str = "us-central1-aiplatform.googleapis.com",
-    user_input: str = input
-):
+
+def predict_custom_trained_model_sample(project: str, endpoint_id: str, location: str = "us-central1", api_endpoint: str = "us-central1-aiplatform.googleapis.com", user_input: str = input):
+    """Predicts text using a custom-trained Vertex AI model.
+
+    Args:
+        project: The Google Cloud project ID.
+        endpoint_id: The ID of the Vertex AI endpoint.
+        location: The region where the endpoint is located.
+        api_endpoint: The API endpoint of Vertex AI.
+        user_input: The user's input text.
+
+    Returns:
+        The predicted text from the model.
+    """
+
     logger.debug("Function predict_custom_trained_model_sample started")
-    """
-    `instances` can be either single instance of type dict or a list
-    of instances.
-    """
-    try:
-        prompt_input = f"Sender:\n{user_input}\n\nAndres Perez:\n"
-        # The two below should be a parameter.
-        conversation_track = session.get('conversation_track')[-3:]
-        # conversation_track_keeper = conversation_track
-        print("These are the last two values", conversation_track)
-        conversation_track_str = "\n\n".join(conversation_track  + [prompt_input])
-        print("This is the joined input for prediction")
-        print(conversation_track_str)
-        instances={'prompt': conversation_track_str, 'max_tokens': 1024, 'temperature': 1, 'top_p': 0.7, 'top_k': 6}
 
-        # The AI Platform services require regional API endpoints.
+    try:
+        # Prepare prompt input for prediction
+        prompt_input = f"Sender:\n{user_input}\n\nAndres Perez:\n"
+        conversation_track = session.get('conversation_track')[-3:]
+        logger.debug(f"Last 3 conversation track items: {conversation_track}")
+        conversation_track_str = "\n\n".join(conversation_track + [prompt_input])
+        logger.debug(f"Joined input for prediction: {conversation_track_str}")
+        instances = {'prompt': conversation_track_str, 'max_tokens': 1024, 'temperature': 1, 'top_p': 0.7, 'top_k': 6}
+
+        # Initialize AI Platform prediction client
         client_options = {"api_endpoint": api_endpoint}
-        # Initialize client that will be used to create and send requests.
-        # This client only needs to be created once, and can be reused for multiple requests.
         client = aiplatform.gapic.PredictionServiceClient(client_options=client_options)
-        # The format of each instance should conform to the deployed model's prediction input schema.
+
+        # Format instances for prediction request
         instances = instances if isinstance(instances, list) else [instances]
-        instances = [
-            json_format.ParseDict(instance_dict, Value()) for instance_dict in instances
-        ]
+        instances = [json_format.ParseDict(instance_dict, Value()) for instance_dict in instances]
+
+        # Set prediction parameters (empty in this case)
         parameters_dict = {}
         parameters = json_format.ParseDict(parameters_dict, Value())
-        endpoint = client.endpoint_path(
-            project=project, location=location, endpoint=endpoint_id
-        )
 
-        response = client.predict(
-            endpoint=endpoint, instances=instances, parameters=parameters
-        )
-        # The predictions are a google.protobuf.Value representation of the model's predictions.
+        # Get endpoint path
+        endpoint = client.endpoint_path(project=project, location=location, endpoint=endpoint_id)
+
+        # Send prediction request and get response
+        response = client.predict(endpoint=endpoint, instances=instances, parameters=parameters)
         predictions = response.predictions
+
+        # Extract predicted text using regex
         pattern = r"Perez:\nOutput:\n(.*)"
         match = re.search(pattern, predictions[0])
 
         if match:
             logger.info(f"Successful prediction: {match.group(1)}")
-            print(conversation_track)
-            print("This is the last one")
-            print(prompt_input + str(match.group(1)))
             conversation_track.append(prompt_input + str(match.group(1)))
-            print("This is the 3 tracker", conversation_track)
+            logger.debug(f"Updated conversation track: {conversation_track}")
             session['conversation_track'] = conversation_track
             return match.group(1)
         else:
@@ -102,13 +91,14 @@ def predict_custom_trained_model_sample(
 
     except Exception as e:
         logger.exception(f"An error occurred: {e}")
-        raise  # Re-raise to allow for error handling at a higher level
-    
+        raise  # Re-raise for error handling
+
+
 def extract_info_from_endpoint(url):
-    """Extracts location, endpoint, and project information from a given AIPlatform URL.
+    """Extracts location, endpoint, and project information from a given Vertex AI endpoint URL.
 
     Args:
-        url: The AIPlatform URL string.
+        url: The Vertex AI endpoint URL string.
 
     Returns:
         A dictionary containing the extracted values:
@@ -118,77 +108,77 @@ def extract_info_from_endpoint(url):
     """
 
     pattern = r"\/projects\/([^\/]+)\/locations\/([^\/]+)\/endpoints\/([^\/]+)\/operations\/([^\/]+)"
-    print(pattern)
+    logger.debug(f"Using regex pattern: {pattern}")
     match = re.search(pattern, url)
-    print(match)
+    logger.debug(f"Regex match result: {match}")
     if match:
-        return {
-            "projects": match.group(1),
-            "locations": match.group(2),
-            "endpoints": match.group(3)
-        }
+        return {"projects": match.group(1), "locations": match.group(2), "endpoints": match.group(3)}
     else:
-        return None  # Or you could raise an exception if the URL is invalid
+        return None
+
 
 @app.route('/signup', methods=['POST'])
 def signup():
+    """Handles user signup requests."""
+
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
 
-        # Data validation
+        # Validate user input
         error_message = None
         if not email or not password or not confirm_password:
             error_message = 'Please fill in all fields.'
         elif password != confirm_password:
             error_message = 'Passwords do not match.'
-        # Add more validation rules as needed (e.g., email format, password strength)
 
         if error_message:
             return error_message, 400
 
-        # Hash the password for security
+        # Hash password for security
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        
+
+        # Insert user into BigQuery
         client = bigquery.Client(os.environ.get('PROJECT_ID'))
         table_ref = client.dataset(DATASET_ID).table(USERS_TABLE)
         table = client.get_table(table_ref)
-        row_to_insert = {
-            'email': email, 
-            'password_hash': hashed_password.decode('utf-8')
-        }
-        client.insert_rows(table, [row_to_insert]) 
-        errors = client.insert_rows(table, [row_to_insert]) 
-        if errors:  # Check if there were errors
+        row_to_insert = {'email': email, 'password_hash': hashed_password.decode('utf-8')}
+        client.insert_rows(table, [row_to_insert])
+        errors = client.insert_rows(table, [row_to_insert])
+        if errors:
+            logger.error(f"Error submitting data to BigQuery: {errors}")
             return 'Error submitting data: {}'.format(errors), 500
         else:
-            # session['user_id'] = user_id  # Assuming you fetched the user's ID
-            session['email'] = email 
+            logger.info(f"User signup successful: {email}")
+            session['email'] = email
             return redirect(url_for('upload'))
+
 
 @app.route('/login', methods=['POST'])
 def login():
-    print("Si entro en este pedo")
+    """Handles user login requests."""
+
+    logger.debug("Login endpoint called")
     if request.method == 'POST':
         email = request.form['email']
-        print("Si entro en este email", email)
+        logger.debug(f"Login attempt for email: {email}")
         password = request.form['password']
-        print("Si entro en este password", password)
 
         # Fetch user data from BigQuery
         client = bigquery.Client(os.environ.get('PROJECT_ID'))
 
-        # Check passwords.
+        # Check password
         query = f"SELECT password_hash FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USERS_TABLE}` WHERE email = '{email}'"
-        print("This is el query...", query)
+        logger.debug(f"Executing BigQuery password query: {query}")
         results = client.query(query).result()
-        print("This is the results", results, type(results))
+        logger.debug(f"BigQuery password query results: {results}")
         stored_password_hash = None
         for row in results:
-            print("This is each row", row)
-            stored_password_hash = row.password_hash  # Assuming 'password' is the column name
-        # Check if user already trained.
+            logger.debug(f"Retrieved password hash from BigQuery: {row}")
+            stored_password_hash = row.password_hash
+
+        # Check training status
         query = f"""
             SELECT training_status, end_point
             FROM `{os.environ.get('PROJECT_ID')}.{DATASET_ID}.{USER_TRAINING_STATUS}`
@@ -196,84 +186,84 @@ def login():
             ORDER BY created_at DESC
             LIMIT 1
         """
-        print("This is el query...", query)
+        logger.debug(f"Executing BigQuery training status query: {query}")
         results = client.query(query).result()
-        print("This is the results", results, type(results))
+        logger.debug(f"BigQuery training status query results: {results}")
         user_training_status = None
         endpoint_uri = None
         for row in results:
-            print("This is each row", row)
-            user_training_status = row.training_status  # Assuming 'training_status' is the column name
+            logger.debug(f"Retrieved training status from BigQuery: {row}")
+            user_training_status = row.training_status
             endpoint_uri = row.end_point
-        # Verify password
+
+        # Verify password and redirect based on training status
         if stored_password_hash and bcrypt.checkpw(password.encode('utf-8'), stored_password_hash.encode('utf-8')):
             session['email'] = email
             if user_training_status:
                 endpoint_details = extract_info_from_endpoint(endpoint_uri)
-                print("This is the email", email)
+                logger.debug(f"Setting session variables for endpoint: {endpoint_details}")
                 session['endpoint'] = endpoint_details["endpoints"]
                 session['location'] = endpoint_details["locations"]
                 session['project'] = endpoint_details["projects"]
-                print(f"This is the endpoint{session['endpoint']}, projects{session['project']}, locations{session['location']}")
-                print(user_training_status)
+                logger.info(f"User logged in with existing training: {email}")
                 return redirect(url_for('chat_page'))
             else:
+                logger.info(f"User logged in without training: {email}")
                 return redirect(url_for('upload'))
-            # Successful login
         else:
-            # Invalid credentials
+            logger.warning(f"Invalid login attempt for email: {email}")
             return 'Invalid email or password', 401
+
 
 @app.route('/upload')
 def upload():
+    """Renders the file upload page for users to provide training data."""
+
     email = session.get('email')
-    print("This is the email, ahuevito", email)
-    if not email:  
-        # Redirect to login if not logged in
-        print("Nos regresamos al home")
+    logger.debug(f"Upload page accessed by email: {email}")
+    if not email:
+        logger.info("Redirecting to home page due to missing email in session")
         return redirect(url_for('home'))
-    print("Aqui llegaaaa")
+    logger.debug("Rendering upload template")
     return render_template('upload.html')
+
 
 @app.route('/handle_upload', methods=['POST'])
 def handle_upload():
+    """Handles file upload and triggers the training pipeline."""
+
     files_metadata = []
     email = session.get('email')
-    print("This is the email, ahuevito", email)
-    print(type(email))
+    logger.debug(f"Handling file upload for email: {email}")
     code_version = request.form.get('code_version')
-    print("This is the code version", code_version)
+    logger.debug(f"Code version for training: {code_version}")
     model_name = request.form.get('model_name')
     epochs = request.form.get('epochs')
-    print(f"Selected model: {model_name}, Epochs: {epochs}")
+    logger.debug(f"Selected model: {model_name}, Epochs: {epochs}")
     user_name = re.match(r'^([^@]+)', str(email)).group(1)
-    print("This is the code version", code_version)
 
+    # Initialize Pub/Sub publisher and prepare storage paths
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(os.environ.get('PROJECT_ID'), PUBSUB_TOPIC)
-    print("This is the topic path", topic_path)
+    logger.debug(f"Publishing message to Pub/Sub topic: {topic_path}")
     blob_folder = os.path.join(user_name, 'input_data')
 
     if not email:
-        print("Nos regresamos al home")
-        # Redirect to login if not logged in
+        logger.info("Redirecting to home page due to missing email in session")
         return redirect(url_for('home'))
-    print("Creo que si jalo, python")
+
+    # Upload files to Cloud Storage
     for file in request.files.getlist('files'):
-        print(file)
-        print("This is the type", type(file))
+        logger.debug(f"Processing uploaded file: {file.filename}")
         client = storage.Client(os.environ.get('PROJECT_ID'))
         bucket = client.get_bucket(BUCKET_NAME)
         blob_string = os.path.join(blob_folder, file.filename)
         blob = bucket.blob(blob_string)
         blob.upload_from_string(FileStorage(file).stream.read())
-        print("Uploading", file.filename, blob.name)
-        files_metadata.append({
-            "file_path": f"gs://{BUCKET_NAME}/{blob_string}",
-            "filename": file.filename  # Add filename to metadata
-        })
+        logger.info(f"Uploaded file to Cloud Storage: {blob.name}")
+        files_metadata.append({"file_path": f"gs://{BUCKET_NAME}/{blob_string}", "filename": file.filename})
 
-    # After all uploads are complete, prepare the message
+    # Prepare and publish Pub/Sub message
     message_data = {
         "user_name": user_name,
         "files": files_metadata,
@@ -283,51 +273,57 @@ def handle_upload():
         "bucket_name": BUCKET_NAME,
         "tag_version": code_version,
         "project_id": os.environ.get('PROJECT_ID')
-        
+
     }
     message_data_json = json.dumps(message_data)
     message_data_bytes = message_data_json.encode('utf-8')
-    print(message_data_bytes)
+    logger.debug(f"Publishing message data to Pub/Sub: {message_data_bytes}")
     publisher.publish(topic_path, message_data_bytes)
-    
+
+    # Update training status in BigQuery
     client = bigquery.Client(os.environ.get('PROJECT_ID'))
     table_ref = client.dataset(DATASET_ID).table(USER_TRAINING_STATUS)
     table = client.get_table(table_ref)
-    row_to_insert = {
-        'email': email,
-        'training_status': False
-    }
-    print("This is the rows to upload", row_to_insert)
-    client.insert_rows(table, [row_to_insert]) 
-    errors = client.insert_rows(table, [row_to_insert]) 
-    if errors:  # Check if there were errors
+    row_to_insert = {'email': email, 'training_status': False}
+    logger.debug(f"Inserting training status into BigQuery: {row_to_insert}")
+    client.insert_rows(table, [row_to_insert])
+    errors = client.insert_rows(table, [row_to_insert])
+    if errors:
+        logger.error(f"Error submitting data to BigQuery: {errors}")
         return 'Error submitting data: {}'.format(errors), 500
     else:
-        print("Upload Successful!")
-        return "Upload Successful!", 200 
-     
+        logger.info("File upload and training initiation successful!")
+        return "Upload Successful!", 200
+
 
 @app.route('/home')
 def home():
+    """Renders the home page of the application."""
+    logger.debug("Rendering home page")
     return render_template('index.html')
 
 
 @app.route('/chat_page')
 def chat_page():
+    """Renders the chat page where users interact with the chatbot."""
+
     email = session.get('email')
-    if not email:  
-        # Redirect to login if not logged in
-        print("Nos regresamos al home")
+    if not email:
+        logger.info("Redirecting to home page due to missing email in session")
         return redirect(url_for('home'))
+    logger.debug("Initializing conversation track and rendering chat page")
     session['conversation_track'] = []
     return render_template('chat.html')
 
+
 @app.route('/send_message', methods=['POST'])
 def send_message():
+    """Handles sending user messages to the chatbot and returning responses."""
+
     user_message = request.json['message']
     logger.debug(f"Received user message: {user_message}")
     email = session.get('email')
-    if not email:  
+    if not email:
         logger.info("User not logged in. Redirecting to home")
         return redirect(url_for('home'))
 
@@ -340,15 +336,15 @@ def send_message():
             project=project,
             endpoint_id=endpoint,
             location=location,
-            user_input= user_message,
+            user_input=user_message,
         )
     except Exception as e:
         logger.exception(f"Error in chatbot prediction: {e}")
         response = "An error occurred. Please try again later."
-    # logger.debug(f"Returning JSON response: {'message': response}")
+    logger.debug(f"Returning chatbot response: {response}")
     return jsonify({'message': response})
 
 
 if __name__ == '__main__':
-    print("Pues si empezo a correr esta madre")
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    logger.info("Starting Flask application")
+    app.run(host='0.0.0.0', port=5000, debug=True)
