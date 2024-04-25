@@ -313,17 +313,10 @@ def fine_tune_pipeline(
         update_user_endpoint(endpoint_resource=model_end_point.outputs["gcp_resources"], email=email, project=project)
 
 if __name__ == '__main__':
-    
-    os.environ['TRAIN_DATA_DIR'] = 'andrehpereh/input_data' 
-    os.environ['BUCKET_NAME'] = 'personalize-chatbots-v1'
+
     from kfp import compiler
     from google.cloud import aiplatform as vertexai
     from config import Config
-    print("This is the model name", Config.MODEL_NAME, "Ahuevito")
-    print("This is the directory", Config.TRAIN_DATA_DIR, "Ahuevito")
-    print("This is the BUCKET_NAME", Config.BUCKET_NAME, "Ahuevito")
-    print("This is the FINE_TUNE_FLAG", Config.FINE_TUNE_FLAG, "Ahuevito")
-    print("This is the EPOCHS", Config.EPOCHS, "Ahuevito")
     pipeline_name = f"fine_tune_pipeline{Config.USER_NAME}.json"
     compiler.Compiler().compile(
         pipeline_func=fine_tune_pipeline, package_path=pipeline_name

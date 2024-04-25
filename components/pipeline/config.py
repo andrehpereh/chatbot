@@ -24,7 +24,7 @@ class Config:
     # Other Variables
     KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", "andrehpereh1")
     USER_NAME = os.getenv("USER_NAME", "andrehpereh")
-    KAGGLE_KEY = os.getenv("KAGGLE_KEY", "5859e39806d9456749dcbac685f04bc9")
+    KAGGLE_KEY = os.getenv("KAGGLE_KEY", "KAGGLE_KEY")
     KERAS_BACKEND = os.getenv("KERAS_BACKEND", "tensorflow")
     REGION = os.getenv("REGION", "us-central1")
     BUCKET_NAME = os.getenv("BUCKET_NAME", f"{PROJECT_ID}-chatbot-v1")
@@ -38,7 +38,9 @@ class Config:
     SEQUENCE_LENGTH = os.getenv("SEQUENCE_LENGTH", 256)
     EPOCHS = os.getenv("EPOCHS", 1)
     BATCH_SIZE = os.getenv("BATCH_SIZE", 1)
-    TRAIN_DATA_DIR = os.getenv("TRAIN_DATA_DIR", "input_data/andrehpereh")
+    TRAIN_DATA_DIR = os.getenv("TRAIN_DATA_DIR", "andrehpereh/input_data")
+    VALIDATION_DATA_DIR = os.getenv("VALIDATION_DATA_DIR", "andrehpereh/validation_data")
+    TEST_DATA_DIR = os.getenv("TEST_DATA_DIR", "andrehpereh/test_data")
     SERVING_IMAGE = os.getenv("SERVING_IMAGE", "us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01")
     FINE_TUNE_FLAG = os.getenv("FINE_TUNE_FLAG", False)
 
